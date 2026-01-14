@@ -1,12 +1,12 @@
-// TODO: Strategy profile component
-// - Model strategy characteristics
-// - Property preferences
-// - Trading behavior
-
-export function StrategyProfile() {
-  return (
-    <div>
-      {/* TODO: Strategy profile UI */}
-    </div>
-  );
-}
+// Re-export strategy components for backwards compatibility
+export {
+  StrategyRadar,
+  StrategyProfileCard,
+  StrategyComparisonTable,
+  StrategySummaryBadges,
+  type StrategyProfile,
+  type StrategyRadarProps,
+  type StrategyProfileCardProps,
+  type StrategyComparisonTableProps,
+  type StrategySummaryBadgesProps,
+} from "./StrategyRadar";

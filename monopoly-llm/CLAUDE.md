@@ -103,7 +103,7 @@ OPENROUTER_API_KEY=      # Get from openrouter.ai
 ## Current Phase
 
 <!-- Update this as you progress -->
-Phase: 9 COMPLETE
+Phase: 10 COMPLETE
 Completed:
 - Phase 1: Project scaffolding (TanStack Start + Convex)
 - Phase 2: Database schema (10 tables)
@@ -134,8 +134,36 @@ Completed:
   - analytics/index.tsx: Dashboard with stats cards, quick links, model overview
   - analytics/leaderboard.tsx: Sortable leaderboard table with rankings
   - analytics/head-to-head.tsx: Model comparison with selectors and win visualization
+- Phase 10: Analytics
+  - convex/analytics.ts: Full analytics queries
+    - getLeaderboard (sortable by wins/winRate/gamesPlayed/avgNetWorth)
+    - getHeadToHeadMatrix, getHeadToHead (model vs model records)
+    - getModelDetail (stats + recent games + trends)
+    - getPropertyStats, getPropertyGroupStats
+    - getRecentGames (with winner info)
+    - getGlobalStats (totals, averages, most winning model)
+    - getStrategyProfile, getStrategyProfiles (buy rate, trade frequency, build speed, risk tolerance)
+    - getWinRateTrends (cumulative wins over time)
+  - convex/statsAggregator.ts: Stats update mutations
+    - updateStatsAfterGame (called when game completes)
+    - recalculateAllStats (rebuild from scratch)
+    - updateAuctionStats, updatePurchaseStats
+    - calculateStrategyProfile
+  - Analytics components (src/components/analytics/)
+    - LeaderboardTable: Sortable table with rank badges, win rate bars
+    - CompactLeaderboard: Sidebar/summary version
+    - HeadToHeadMatrix: Grid with win/loss color intensity
+    - HeadToHeadComparison: Two-model comparison with bar visualization
+    - WinRateChart: Recharts BarChart for win rates
+    - WinRateTrendChart: Recharts LineChart for cumulative wins
+    - PropertyHeatmap: Property stats by group with color intensity
+    - TopPropertiesList: Ranked list of properties by metric
+    - StrategyRadar: Recharts RadarChart for strategy profiles
+    - StrategyProfileCard: Single model strategy breakdown
+    - StrategyComparisonTable: Multi-model comparison table
+    - StrategySummaryBadges: Personality trait badges
 
-Working on: Phase 10 (Integration Testing / Polish)
+Working on: Phase 11 (End-to-End Testing / Deployment)
 
 ## Implementation Notes
 

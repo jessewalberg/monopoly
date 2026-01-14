@@ -1,11 +1,9 @@
-// TODO: Head-to-head comparison component
-// - Model vs model statistics
-// - Win/loss records
-
-export function HeadToHead() {
-  return (
-    <div>
-      {/* TODO: Head-to-head stats */}
-    </div>
-  );
-}
+// Re-export head-to-head components for backwards compatibility
+export {
+  HeadToHeadMatrix,
+  HeadToHeadComparison,
+  type HeadToHeadRecord,
+  type HeadToHeadMatrixData,
+  type HeadToHeadMatrixProps,
+  type HeadToHeadComparisonProps,
+} from "./HeadToHeadMatrix";
