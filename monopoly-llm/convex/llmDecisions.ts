@@ -11,6 +11,12 @@ import {
   type PropertyInfo,
   type GameInfo,
 } from "./lib/prompts";
+import {
+  parseDecisionResponse,
+  getFallbackDecision,
+  validateDecision,
+  extractBidAmount,
+} from "./lib/parseResponse";
 
 // ============================================================
 // TYPES
@@ -61,6 +67,9 @@ export const getLLMDecision = internalAction({
   handler: async (ctx, args): Promise<void> => {
     const startTime = Date.now();
 
+    const decisionContext = safeParseJson(args.context);
+    const validActions = getValidActions(args.decisionType, decisionContext);
+
     // Fetch all needed data
     const [game, player, turn] = await Promise.all([
       ctx.runQuery(api.games.get, { gameId: args.gameId }),
@@ -71,15 +80,16 @@ export const getLLMDecision = internalAction({
     if (!game || !player || !turn) {
       console.error("Missing game data for LLM decision");
       // Fall back to default action
+      const fallback = getFallbackDecision(args.decisionType, validActions);
       await ctx.runMutation(internal.llmDecisionExecutors.processDecisionResult, {
         gameId: args.gameId,
         playerId: args.playerId,
         turnId: args.turnId,
         turnNumber: game?.currentTurnNumber ?? 1,
         decisionType: args.decisionType,
-        action: getDefaultAction(args.decisionType),
-        parameters: {},
-        reasoning: "Failed to fetch game data",
+        action: fallback.action,
+        parameters: fallback.parameters,
+        reasoning: "Failed to fetch game data - using fallback",
         promptTokens: 0,
         completionTokens: 0,
         latencyMs: Date.now() - startTime,
@@ -133,9 +143,6 @@ export const getLLMDecision = internalAction({
       currentPhase: game.currentPhase,
     };
 
-    const decisionContext = JSON.parse(args.context);
-    const validActions = getValidActions(args.decisionType, decisionContext);
-
     const systemPrompt = buildSystemPrompt(player.modelDisplayName);
     const userPrompt = buildDecisionPrompt(
       args.decisionType,
@@ -151,15 +158,16 @@ export const getLLMDecision = internalAction({
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       console.error("OPENROUTER_API_KEY not configured");
+      const fallback = getFallbackDecision(args.decisionType, validActions);
       await ctx.runMutation(internal.llmDecisionExecutors.processDecisionResult, {
         gameId: args.gameId,
         playerId: args.playerId,
         turnId: args.turnId,
         turnNumber: game.currentTurnNumber,
         decisionType: args.decisionType,
-        action: getDefaultAction(args.decisionType),
-        parameters: {},
-        reasoning: "API key not configured - using default",
+        action: fallback.action,
+        parameters: fallback.parameters,
+        reasoning: "API key not configured - using fallback",
         promptTokens: 0,
         completionTokens: 0,
         latencyMs: Date.now() - startTime,
@@ -204,15 +212,16 @@ export const getLLMDecision = internalAction({
       completionTokens = response.usage?.completion_tokens || 0;
     } catch (error) {
       console.error("LLM call failed:", error);
+      const fallback = getFallbackDecision(args.decisionType, validActions);
       await ctx.runMutation(internal.llmDecisionExecutors.processDecisionResult, {
         gameId: args.gameId,
         playerId: args.playerId,
         turnId: args.turnId,
         turnNumber: game.currentTurnNumber,
         decisionType: args.decisionType,
-        action: getDefaultAction(args.decisionType),
-        parameters: {},
-        reasoning: `LLM error: ${(error as Error).message}`,
+        action: fallback.action,
+        parameters: fallback.parameters,
+        reasoning: `LLM error: ${(error as Error).message} - using fallback`,
         promptTokens: 0,
         completionTokens: 0,
         latencyMs: Date.now() - startTime,
@@ -222,16 +231,25 @@ export const getLLMDecision = internalAction({
       return;
     }
 
-    // Parse the response
-    const parsed = parseJsonResponse(rawResponse);
     const latencyMs = Date.now() - startTime;
+    let parsed = parseDecisionResponse(rawResponse, validActions);
+    if (parsed && args.decisionType === "auction_bid") {
+      const amount = extractBidAmount(parsed.parameters, player.cash);
+      parsed = { ...parsed, parameters: { ...parsed.parameters, amount } };
+    }
 
-    // Validate and normalize the action
-    const action = normalizeAction(
-      parsed.action || getDefaultAction(args.decisionType),
-      args.decisionType,
-      validActions
-    );
+    let decision = parsed ?? getFallbackDecision(args.decisionType, validActions);
+
+    if (parsed) {
+      const validation = validateDecision(parsed, args.decisionType);
+      if (!validation.valid) {
+        decision = getFallbackDecision(args.decisionType, validActions);
+      }
+    }
+    if (args.decisionType === "auction_bid") {
+      const amount = extractBidAmount(decision.parameters, player.cash);
+      decision = { ...decision, parameters: { ...decision.parameters, amount } };
+    }
 
     await ctx.runMutation(internal.llmDecisionExecutors.processDecisionResult, {
       gameId: args.gameId,
@@ -239,9 +257,9 @@ export const getLLMDecision = internalAction({
       turnId: args.turnId,
       turnNumber: game.currentTurnNumber,
       decisionType: args.decisionType,
-      action,
-      parameters: parsed.parameters || {},
-      reasoning: parsed.reasoning || "No reasoning provided",
+      action: decision.action,
+      parameters: decision.parameters,
+      reasoning: decision.reasoning,
       promptTokens,
       completionTokens,
       latencyMs,
@@ -254,59 +272,6 @@ export const getLLMDecision = internalAction({
 // ============================================================
 // HELPER FUNCTIONS
 // ============================================================
-
-function parseJsonResponse(text: string): {
-  action?: string;
-  parameters?: Record<string, unknown>;
-  reasoning?: string;
-} {
-  let cleaned = text.trim();
-
-  // Remove markdown code blocks
-  if (cleaned.startsWith("```json")) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith("```")) {
-    cleaned = cleaned.slice(3);
-  }
-  if (cleaned.endsWith("```")) {
-    cleaned = cleaned.slice(0, -3);
-  }
-  cleaned = cleaned.trim();
-
-  // Try to find JSON object
-  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    try {
-      return JSON.parse(jsonMatch[0]);
-    } catch {
-      // Continue
-    }
-  }
-
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    return {};
-  }
-}
-
-function getDefaultAction(decisionType: DecisionType): string {
-  switch (decisionType) {
-    case "buy_property":
-      return "buy"; // Default to buying
-    case "auction_bid":
-      return "bid";
-    case "jail_strategy":
-      return "roll"; // Default to rolling
-    case "pre_roll_actions":
-    case "post_roll_actions":
-      return "done"; // Default to finishing
-    case "trade_response":
-      return "reject"; // Default to rejecting
-    default:
-      return "done";
-  }
-}
 
 function getValidActions(
   decisionType: DecisionType,
@@ -334,36 +299,10 @@ function getValidActions(
   }
 }
 
-function normalizeAction(
-  action: string,
-  decisionType: DecisionType,
-  validActions: string[]
-): string {
-  const normalized = action.toLowerCase().trim();
-
-  // Check if action is valid
-  if (validActions.includes(normalized)) {
-    return normalized;
+function safeParseJson(value: string): Record<string, unknown> {
+  try {
+    return JSON.parse(value) as Record<string, unknown>;
+  } catch {
+    return {};
   }
-
-  // Map common variations
-  const mappings: Record<string, string> = {
-    purchase: "buy",
-    pass: "auction",
-    decline: "auction",
-    "roll dice": "roll",
-    "pay fine": "pay",
-    "use card": "use_card",
-    end: "done",
-    finish: "done",
-    accept_trade: "accept",
-    reject_trade: "reject",
-  };
-
-  if (mappings[normalized] && validActions.includes(mappings[normalized])) {
-    return mappings[normalized];
-  }
-
-  // Return default if no match
-  return getDefaultAction(decisionType);
 }

@@ -202,8 +202,8 @@ function buildBuyPropertyPrompt(
   _validActions: string[]
 ): string {
   const propertyName = context.propertyName as string;
-  const cost = context.cost as number;
-  const group = context.group as string;
+  const cost = (context.propertyCost ?? context.cost) as number;
+  const group = (context.propertyGroup ?? context.group) as string;
 
   let prompt = `=== DECISION: BUY PROPERTY ===\n`;
   prompt += `You landed on ${propertyName} (${group})\n`;
@@ -286,6 +286,7 @@ function buildPreRollPrompt(
   prompt += `Respond with: { "action": "<choice>", "parameters": { ... }, "reasoning": "..." }\n`;
   prompt += `For "build": parameters: { "propertyName": "...", "count": 1 }\n`;
   prompt += `For "mortgage"/"unmortgage": parameters: { "propertyName": "..." }\n`;
+  prompt += `For "trade": parameters: { "recipientName": "...", "offerMoney": 0, "offerProperties": ["..."], "offerGetOutOfJailCards": 0, "requestMoney": 0, "requestProperties": ["..."], "requestGetOutOfJailCards": 0 }\n`;
   prompt += `For "done": parameters: {}`;
 
   return prompt;
@@ -349,7 +350,9 @@ function buildTradeResponsePrompt(
   prompt += `- "reject": Decline this trade\n`;
   prompt += `- "counter": Make a counter-offer\n\n`;
 
-  prompt += `Respond with: { "action": "<choice>", "parameters": {}, "reasoning": "..." }`;
+  prompt += `Respond with: { "action": "<choice>", "parameters": { ... }, "reasoning": "..." }\n`;
+  prompt += `For "counter": you are proposing YOUR offer in exchange for THEIR items.\n`;
+  prompt += `Parameters: { "offerMoney": 0, "offerProperties": ["..."], "offerGetOutOfJailCards": 0, "requestMoney": 0, "requestProperties": ["..."], "requestGetOutOfJailCards": 0 }`;
 
   return prompt;
 }

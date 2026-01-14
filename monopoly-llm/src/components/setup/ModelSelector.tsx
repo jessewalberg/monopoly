@@ -27,7 +27,7 @@ const tierBadgeVariant: Record<ModelTier, "success" | "info" | "warning" | "neut
   flagship: "success",
   standard: "info",
   fast: "warning",
-  economy: "neutral",
+  free: "neutral",
 };
 
 // ============================================================
@@ -136,10 +136,10 @@ export function ModelGridSelector({
 
   // Group by tier
   const byTier: Record<ModelTier, LLMModel[]> = {
+    free: [],
     flagship: [],
     standard: [],
     fast: [],
-    economy: [],
   };
 
   for (const model of availableModels) {
@@ -148,7 +148,7 @@ export function ModelGridSelector({
 
   return (
     <div className="space-y-4">
-      {(["flagship", "standard", "fast", "economy"] as ModelTier[]).map(
+      {(["free", "flagship", "standard", "fast"] as ModelTier[]).map(
         (tier) =>
           byTier[tier].length > 0 && (
             <div key={tier}>

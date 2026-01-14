@@ -52,7 +52,8 @@ export default defineSchema({
           v.literal("jail_strategy"),
           v.literal("pre_roll_actions"),
           v.literal("post_roll_actions"),
-          v.literal("trade_response")
+          v.literal("trade_response"),
+          v.literal("bankruptcy_resolution")
         ),
         context: v.string(), // JSON with decision context
       })
@@ -169,6 +170,7 @@ export default defineSchema({
     ),
     proposerReasoning: v.string(),
     recipientReasoning: v.optional(v.string()),
+    counterDepth: v.optional(v.number()),
   }).index("by_game", ["gameId"]),
 
   rentPayments: defineTable({

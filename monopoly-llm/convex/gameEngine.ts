@@ -248,9 +248,26 @@ async function processPreRoll(
     return; // Don't continue - LLM will call back when done
   }
 
-  // For non-jail turns, proceed directly to rolling
-  // TODO: Add pre_roll_actions LLM call here for build/mortgage/trade decisions
-  await ctx.db.patch(game._id, { currentPhase: "rolling" });
+  // For non-jail turns, ask LLM for pre-roll actions
+  const context = JSON.stringify({
+    phase: "pre_roll",
+    playerCash: player.cash,
+  });
+
+  await ctx.db.patch(game._id, {
+    waitingForLLM: true,
+    pendingDecision: { type: "pre_roll_actions", context },
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await ctx.scheduler.runAfter(0, (internal as any).llmDecisions.getLLMDecision, {
+    gameId: game._id,
+    playerId: player._id,
+    turnId: turn._id,
+    decisionType: "pre_roll_actions",
+    context,
+  });
+  return;
 }
 
 async function processRolling(
@@ -536,7 +553,7 @@ async function processPostRoll(
       let updatedCash = player.cash;
       let updatedPosition = player.position;
 
-      if (result.cashChange) {
+      if (result.cashChange && !result.payEachPlayer && !result.collectFromEach) {
         updatedCash += result.cashChange;
       }
 
@@ -605,23 +622,165 @@ async function processPostRoll(
               }
             }
           }
+          // Check if card moved player to another Chance/Community Chest space
+          // This happens with "Go Back 3 Spaces" from Chance at position 36 -> Community Chest at 33
+          else if (landedSpace.type === "chance" || landedSpace.type === "community_chest") {
+            // Draw another card from the new deck
+            const isChance2 = landedSpace.type === "chance";
+            const cards2 = isChance2 ? CHANCE_CARDS : COMMUNITY_CHEST_CARDS;
+
+            // Get fresh game state for deck
+            const freshGame = await ctx.db.get(game._id);
+            let deck2 = isChance2 ? (freshGame?.chanceDeck ?? []) : (freshGame?.communityChestDeck ?? []);
+
+            // Reshuffle if deck is empty
+            if (deck2.length === 0) {
+              deck2 = shuffleDeckIndices(cards2.length);
+              await addTurnEvent(ctx, turn._id, `${isChance2 ? "Chance" : "Community Chest"} deck reshuffled`);
+            }
+
+            // Draw from front of deck
+            const cardIndex2 = deck2[0];
+            const remainingDeck2 = deck2.slice(1);
+            const card2 = cards2[cardIndex2];
+
+            // Update deck in game state
+            if (isChance2) {
+              await ctx.db.patch(game._id, { chanceDeck: remainingDeck2 });
+            } else {
+              await ctx.db.patch(game._id, { communityChestDeck: remainingDeck2 });
+            }
+
+            await addTurnEvent(ctx, turn._id, `Drew ${isChance2 ? "Chance" : "Community Chest"}: "${card2.text}"`);
+
+            // Execute the second card
+            const freshPlayer = await ctx.db.get(player._id);
+            const playerState2 = {
+              _id: player._id,
+              cash: freshPlayer?.cash ?? updatedCash,
+              position: freshPlayer?.position ?? updatedPosition
+            };
+            const allPlayerStates2 = await Promise.all(
+              allPlayers.map(async (p) => {
+                const fresh = await ctx.db.get(p._id);
+                return { _id: p._id, cash: fresh?.cash ?? p.cash, position: fresh?.position ?? p.position };
+              })
+            );
+
+            const result2 = isChance2
+              ? executeChanceCard(card2 as any, playerState2, allPlayerStates2, properties)
+              : executeCommunityChestCard(card2 as any, playerState2, allPlayerStates2, properties);
+
+            // Apply second card effects
+            let updatedCash2 = playerState2.cash;
+            let updatedPosition2 = playerState2.position;
+
+            if (result2.cashChange && !result2.payEachPlayer && !result2.collectFromEach) {
+              updatedCash2 += result2.cashChange;
+            }
+
+            if (result2.newPosition !== undefined) {
+              updatedPosition2 = result2.newPosition;
+            }
+
+            if (result2.goToJail) {
+              await ctx.db.patch(player._id, {
+                position: JAIL_POSITION,
+                inJail: true,
+                jailTurnsRemaining: MAX_JAIL_TURNS,
+                cash: updatedCash2,
+              });
+              await addTurnEvent(ctx, turn._id, "Sent to Jail!");
+            } else {
+              await ctx.db.patch(player._id, {
+                position: updatedPosition2,
+                cash: updatedCash2,
+                getOutOfJailCards: result2.getOutOfJailCard
+                  ? (freshPlayer?.getOutOfJailCards ?? player.getOutOfJailCards) + 1
+                  : freshPlayer?.getOutOfJailCards ?? player.getOutOfJailCards,
+              });
+
+              if (result2.passedGo) {
+                await addTurnEvent(ctx, turn._id, `Passed GO - collected $${GO_SALARY}`);
+              }
+            }
+
+            // Handle second card's pay each player / collect from each
+            if (result2.payEachPlayer) {
+              const currentPlayer2 = await ctx.db.get(player._id);
+              let remainingCash2 = currentPlayer2?.cash ?? updatedCash2;
+              for (const other of allPlayers) {
+                if (other._id !== player._id && !other.isBankrupt) {
+                  const freshOther = await ctx.db.get(other._id);
+                  const payment = Math.min(result2.payEachPlayer, remainingCash2);
+                  if (payment > 0) {
+                    await ctx.db.patch(other._id, { cash: (freshOther?.cash ?? other.cash) + payment });
+                    remainingCash2 -= payment;
+                  }
+                }
+              }
+              await ctx.db.patch(player._id, { cash: remainingCash2 });
+            }
+            if (result2.collectFromEach) {
+              const currentPlayer2 = await ctx.db.get(player._id);
+              let totalCollected2 = 0;
+              for (const other of allPlayers) {
+                if (other._id !== player._id && !other.isBankrupt) {
+                  const freshOther = await ctx.db.get(other._id);
+                  const otherCash = freshOther?.cash ?? other.cash;
+                  const payment = Math.min(result2.collectFromEach, otherCash);
+                  await ctx.db.patch(other._id, { cash: otherCash - payment });
+                  totalCollected2 += payment;
+                }
+              }
+              if (currentPlayer2) {
+                await ctx.db.patch(player._id, { cash: currentPlayer2.cash + totalCollected2 });
+              }
+            }
+          }
         }
       }
 
       // Handle pay each player / collect from each
       if (result.payEachPlayer) {
+        const currentPlayer = await ctx.db.get(player._id);
+        let remainingCash = currentPlayer?.cash ?? updatedCash;
+        let totalPaid = 0;
         for (const other of allPlayers) {
           if (other._id !== player._id && !other.isBankrupt) {
-            await ctx.db.patch(other._id, { cash: other.cash + result.payEachPlayer });
+            const payment = Math.min(result.payEachPlayer, remainingCash);
+            if (payment > 0) {
+              await ctx.db.patch(other._id, { cash: other.cash + payment });
+              remainingCash -= payment;
+              totalPaid += payment;
+            }
           }
+        }
+        await ctx.db.patch(player._id, { cash: remainingCash });
+
+        const eligibleRecipients = allPlayers.filter(
+          (p) => p._id !== player._id && !p.isBankrupt
+        ).length;
+        const requiredTotal = result.payEachPlayer * eligibleRecipients;
+        if (totalPaid < requiredTotal) {
+          await handleBankruptcy(ctx, game._id, player._id, undefined, properties);
         }
       }
       if (result.collectFromEach) {
+        const currentPlayer = await ctx.db.get(player._id);
+        let totalCollected = 0;
         for (const other of allPlayers) {
           if (other._id !== player._id && !other.isBankrupt) {
             const payment = Math.min(result.collectFromEach, other.cash);
             await ctx.db.patch(other._id, { cash: other.cash - payment });
+            totalCollected += payment;
+            if (other.cash < result.collectFromEach) {
+              await handleBankruptcy(ctx, game._id, other._id, player._id, properties);
+            }
           }
+        }
+        if (currentPlayer) {
+          await ctx.db.patch(player._id, { cash: currentPlayer.cash + totalCollected });
         }
       }
       break;
@@ -640,16 +799,30 @@ async function processPostRoll(
     // go, jail (visiting), free_parking - nothing happens
   }
 
-  // Check for doubles (another roll)
-  const wasDoubles = turn.wasDoubles;
   const playerData = await ctx.db.get(player._id);
-
-  if (wasDoubles && !playerData?.inJail) {
-    await addTurnEvent(ctx, turn._id, "Rolled doubles - rolling again!");
-    await ctx.db.patch(game._id, { currentPhase: "rolling" });
-  } else {
+  if (playerData?.isBankrupt || playerData?.inJail) {
     await ctx.db.patch(game._id, { currentPhase: "turn_end" });
+    return;
   }
+
+  const context = JSON.stringify({
+    phase: "post_roll",
+    playerCash: playerData?.cash ?? player.cash,
+  });
+
+  await ctx.db.patch(game._id, {
+    waitingForLLM: true,
+    pendingDecision: { type: "post_roll_actions", context },
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await ctx.scheduler.runAfter(0, (internal as any).llmDecisions.getLLMDecision, {
+    gameId: game._id,
+    playerId: player._id,
+    turnId: turn._id,
+    decisionType: "post_roll_actions",
+    context,
+  });
 }
 
 async function processTurnEnd(
@@ -1073,62 +1246,6 @@ export const buyProperty = mutation({
     return { propertyName: property.name, cost };
   },
 });
-
-/**
- * Run an automated auction during turn processing
- * Uses simple bidding strategy until LLM integration is complete
- */
-async function runAutomatedAuction(
-  ctx: any,
-  gameId: Id<"games">,
-  propertyId: Id<"properties">,
-  turnId: Id<"turns">,
-  allPlayers: Array<{ _id: Id<"players">; cash: number; isBankrupt: boolean; modelDisplayName: string }>,
-  propertyCost: number,
-  propertyName: string
-): Promise<{ winnerId: Id<"players"> | null; winningBid: number }> {
-  // Collect bids from all active players
-  // Simple strategy: bid up to 50% of cash if it's below property cost, otherwise 0
-  // TODO: Replace with LLM decisions when Issue #1 is resolved
-  const bids: Array<{ playerId: Id<"players">; amount: number }> = [];
-
-  for (const player of allPlayers) {
-    if (player.isBankrupt) continue;
-
-    // Simple automated bid strategy
-    const maxBid = Math.floor(player.cash * 0.5);
-    const bid = maxBid >= 1 ? Math.min(maxBid, propertyCost - 1) : 0;
-
-    if (bid > 0) {
-      bids.push({ playerId: player._id, amount: bid });
-    }
-  }
-
-  // Find highest valid bid
-  let highestBid = 0;
-  let winnerId: Id<"players"> | null = null;
-
-  for (const bid of bids) {
-    const player = allPlayers.find(p => p._id === bid.playerId);
-    if (player && !player.isBankrupt && bid.amount > highestBid && bid.amount <= player.cash) {
-      highestBid = bid.amount;
-      winnerId = bid.playerId;
-    }
-  }
-
-  if (winnerId && highestBid > 0) {
-    const winner = allPlayers.find(p => p._id === winnerId);
-    if (winner) {
-      await ctx.db.patch(propertyId, { ownerId: winnerId });
-      await ctx.db.patch(winnerId, { cash: winner.cash - highestBid });
-      await addTurnEvent(ctx, turnId, `Auction: ${winner.modelDisplayName} won ${propertyName} for $${highestBid}`);
-    }
-  } else {
-    await addTurnEvent(ctx, turnId, `Auction: No valid bids for ${propertyName} - property remains unowned`);
-  }
-
-  return { winnerId, winningBid: highestBid };
-}
 
 /**
  * Run a simplified auction for a property

@@ -196,7 +196,7 @@
 }
 
 .property-card {
-  @apply transition-property;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
 }
 
 .property-card:hover {
@@ -213,11 +213,11 @@
 }
 
 .player-token.active {
-  @apply animate-bounce-subtle;
+  animation: bounce-subtle 1s ease-in-out infinite;
 }
 
 .player-token.moving {
-  @apply animate-token-move;
+  animation: token-move 0.4s ease-out;
 }
 
 /* ============================================================
@@ -229,7 +229,7 @@
 }
 
 .dice.rolling {
-  @apply animate-dice-roll;
+  animation: dice-roll 0.5s ease-in-out;
 }
 
 /* ============================================================
@@ -301,7 +301,7 @@
 
 /* Winner celebration */
 .winner-crown {
-  @apply animate-bounce-subtle;
+  animation: bounce-subtle 1s ease-in-out infinite;
 }
 
 /* Turn indicator */

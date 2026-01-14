@@ -164,6 +164,7 @@ export interface Trade {
   status: TradeStatus;
   proposerReasoning: string;
   recipientReasoning?: string;
+  counterDepth?: number;
 }
 
 export interface RentPayment {

@@ -1,9 +1,17 @@
 import { v } from "convex/values";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
-import { getSpace } from "./lib/board";
+import type { Id, Doc } from "./_generated/dataModel";
+import { getSpace, getHouseCost, getMortgageValue, getUnmortgageCost } from "./lib/board";
 import { JAIL_FINE } from "./lib/constants";
+import {
+  canBuildHouse,
+  canMortgage,
+  canUnmortgage,
+  canProposeTrade,
+  type TradeOffer,
+} from "./lib/validation";
+import { extractBuildCount, extractPropertyName } from "./lib/parseResponse";
 
 // ============================================================
 // DECISION EXECUTION MUTATIONS
@@ -79,40 +87,16 @@ export const executeBuyPropertyDecision = internalMutation({
       await ctx.db.patch(args.playerId, { cash: player.cash - cost });
       await addEvent(`Decided to buy ${space.name} for $${cost}`);
     } else {
-      // Go to auction
-      await addEvent(`Declined to buy ${space.name} - going to auction`);
-
-      // Run automated auction (will be enhanced with LLM bids later)
-      const allPlayers = await ctx.db
-        .query("players")
-        .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-        .collect();
-
-      const activePlayers = allPlayers.filter((p) => !p.isBankrupt);
-
-      // Simple auction: each player bids up to 50% of cash
-      let highestBid = 0;
-      let winnerId: Id<"players"> | null = null;
-
-      for (const p of activePlayers) {
-        const maxBid = Math.floor(p.cash * 0.5);
-        const bid = maxBid >= 1 ? Math.min(maxBid, cost - 1) : 0;
-        if (bid > highestBid && bid <= p.cash) {
-          highestBid = bid;
-          winnerId = p._id;
-        }
-      }
-
-      if (winnerId && highestBid > 0) {
-        const winner = await ctx.db.get(winnerId);
-        if (winner) {
-          await ctx.db.patch(property._id, { ownerId: winnerId });
-          await ctx.db.patch(winnerId, { cash: winner.cash - highestBid });
-          await addEvent(`Auction: ${winner.modelDisplayName} won ${space.name} for $${highestBid}`);
-        }
-      } else {
-        await addEvent(`Auction: No valid bids for ${space.name}`);
-      }
+      // Go to auction (LLM-driven)
+      await addEvent(`Declined to buy ${space.name} - starting auction`);
+      await startAuctionFlow(ctx, {
+        gameId: args.gameId,
+        turnId: args.turnId,
+        propertyId: property._id,
+        propertyPosition: property.position,
+        propertyName: space.name,
+      });
+      return;
     }
 
     // Clear waiting state and continue game
@@ -122,6 +106,7 @@ export const executeBuyPropertyDecision = internalMutation({
     const playerData = await ctx.db.get(args.playerId);
 
     if (wasDoubles && !playerData?.inJail) {
+      await addEvent("Rolled doubles - rolling again!");
       await ctx.db.patch(args.gameId, {
         waitingForLLM: false,
         pendingDecision: undefined,
@@ -235,48 +220,17 @@ export const executePrePostRollDecision = internalMutation({
     action: v.string(),
     parameters: v.any(),
     phase: v.string(),
+    reasoning: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const game = await ctx.db.get(args.gameId);
-    const player = await ctx.db.get(args.playerId);
-    if (!game || !player) return;
-
-    const addEvent = async (event: string) => {
-      const turn = await ctx.db.get(args.turnId);
-      if (turn) {
-        await ctx.db.patch(args.turnId, {
-          events: [...turn.events, event],
-        });
-      }
-    };
-
-    let nextPhase = game.currentPhase;
-
-    if (args.action === "done") {
-      // Move to next phase
-      if (args.phase === "pre_roll_actions") {
-        nextPhase = "rolling";
-      } else {
-        nextPhase = "turn_end";
-      }
-    } else if (args.action === "build" && args.parameters?.propertyName) {
-      // Build house (simplified)
-      await addEvent(`Building on ${args.parameters.propertyName}`);
-      // Would need full implementation
-    } else if (args.action === "mortgage" && args.parameters?.propertyName) {
-      await addEvent(`Mortgaging ${args.parameters.propertyName}`);
-      // Would need full implementation
-    }
-
-    // Clear waiting state and continue
-    await ctx.db.patch(args.gameId, {
-      waitingForLLM: false,
-      pendingDecision: undefined,
-      currentPhase: nextPhase,
-    });
-
-    await ctx.scheduler.runAfter(game.config.speedMs, internal.gameEngine.processTurnStep, {
+    await executePrePostRollHandler(ctx, {
       gameId: args.gameId,
+      playerId: args.playerId,
+      turnId: args.turnId,
+      action: args.action,
+      parameters: args.parameters,
+      phase: args.phase,
+      reasoning: args.reasoning,
     });
   },
 });
@@ -310,6 +264,29 @@ export const processDecisionResult = internalMutation({
     context: v.string(),
   },
   handler: async (ctx, args) => {
+    const decisionContext = safeParseContext(args.context);
+    let action = args.action;
+
+    if (args.decisionType === "buy_property" && action === "buy") {
+      const canAffordContext = decisionContext.canAfford;
+      let canAfford =
+        typeof canAffordContext === "boolean" ? canAffordContext : undefined;
+
+      if (canAfford === undefined) {
+        const propertyCost =
+          (decisionContext.propertyCost as number) ??
+          (decisionContext.cost as number);
+        if (typeof propertyCost === "number") {
+          const player = await ctx.db.get(args.playerId);
+          canAfford = player ? player.cash >= propertyCost : undefined;
+        }
+      }
+
+      if (canAfford === false) {
+        action = "auction";
+      }
+    }
+
     // Log the decision to the database
     await ctx.db.insert("decisions", {
       gameId: args.gameId,
@@ -318,8 +295,8 @@ export const processDecisionResult = internalMutation({
       turnNumber: args.turnNumber,
       decisionType: args.decisionType,
       context: args.context,
-      optionsAvailable: getValidActions(args.decisionType, JSON.parse(args.context)),
-      decisionMade: args.action,
+      optionsAvailable: getValidActions(args.decisionType, decisionContext),
+      decisionMade: action,
       parameters: JSON.stringify(args.parameters),
       reasoning: args.reasoning,
       rawResponse: args.rawResponse,
@@ -329,19 +306,23 @@ export const processDecisionResult = internalMutation({
     });
 
     // Execute the decision based on type
-    const decisionContext = JSON.parse(args.context);
     const game = await ctx.db.get(args.gameId);
     if (!game) return;
 
     switch (args.decisionType) {
       case "buy_property":
         // Call the buy property executor directly since we're in a mutation
+        const propertyPosition = Number(decisionContext.propertyPosition);
+        if (!Number.isFinite(propertyPosition)) {
+          await clearWaitingHandler(ctx, { gameId: args.gameId });
+          break;
+        }
         await executeBuyPropertyHandler(ctx, {
           gameId: args.gameId,
           playerId: args.playerId,
           turnId: args.turnId,
-          action: args.action,
-          propertyPosition: decisionContext.propertyPosition,
+          action,
+          propertyPosition,
         });
         break;
 
@@ -355,9 +336,14 @@ export const processDecisionResult = internalMutation({
         break;
 
       case "auction_bid":
-        // Just log for now
-        console.log(`Auction bid: ${args.action} with amount ${args.parameters?.amount}`);
-        await clearWaitingHandler(ctx, { gameId: args.gameId });
+        await executeAuctionBidHandler(ctx, {
+          gameId: args.gameId,
+          playerId: args.playerId,
+          turnId: args.turnId,
+          action,
+          parameters: args.parameters,
+          context: decisionContext,
+        });
         break;
 
       case "pre_roll_actions":
@@ -366,9 +352,22 @@ export const processDecisionResult = internalMutation({
           gameId: args.gameId,
           playerId: args.playerId,
           turnId: args.turnId,
-          action: args.action,
+          action,
           parameters: args.parameters,
           phase: args.decisionType,
+          reasoning: args.reasoning,
+        });
+        break;
+
+      case "trade_response":
+        await executeTradeResponseHandler(ctx, {
+          gameId: args.gameId,
+          playerId: args.playerId,
+          turnId: args.turnId,
+          action,
+          parameters: args.parameters,
+          context: decisionContext,
+          reasoning: args.reasoning,
         });
         break;
 
@@ -383,7 +382,7 @@ export const processDecisionResult = internalMutation({
 // INLINE HANDLERS (to avoid circular scheduling issues)
 // ============================================================
 
-async function clearWaitingHandler(ctx: any, args: { gameId: Id<"games"> }) {
+async function clearWaitingHandler(ctx: MutationCtx, args: { gameId: Id<"games"> }) {
   const game = await ctx.db.get(args.gameId);
   if (!game) return;
 
@@ -398,7 +397,7 @@ async function clearWaitingHandler(ctx: any, args: { gameId: Id<"games"> }) {
 }
 
 async function executeBuyPropertyHandler(
-  ctx: any,
+  ctx: MutationCtx,
   args: {
     gameId: Id<"games">;
     playerId: Id<"players">;
@@ -439,37 +438,15 @@ async function executeBuyPropertyHandler(
     await ctx.db.patch(args.playerId, { cash: player.cash - cost });
     await addEvent(`Decided to buy ${space.name} for $${cost}`);
   } else {
-    await addEvent(`Declined to buy ${space.name} - going to auction`);
-
-    const allPlayers = await ctx.db
-      .query("players")
-      .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
-      .collect();
-
-    const activePlayers = allPlayers.filter((p: any) => !p.isBankrupt);
-
-    let highestBid = 0;
-    let winnerId: Id<"players"> | null = null;
-
-    for (const p of activePlayers) {
-      const maxBid = Math.floor(p.cash * 0.5);
-      const bid = maxBid >= 1 ? Math.min(maxBid, cost - 1) : 0;
-      if (bid > highestBid && bid <= p.cash) {
-        highestBid = bid;
-        winnerId = p._id;
-      }
-    }
-
-    if (winnerId && highestBid > 0) {
-      const winner = await ctx.db.get(winnerId);
-      if (winner) {
-        await ctx.db.patch(property._id, { ownerId: winnerId });
-        await ctx.db.patch(winnerId, { cash: winner.cash - highestBid });
-        await addEvent(`Auction: ${winner.modelDisplayName} won ${space.name} for $${highestBid}`);
-      }
-    } else {
-      await addEvent(`Auction: No valid bids for ${space.name}`);
-    }
+    await addEvent(`Declined to buy ${space.name} - starting auction`);
+    await startAuctionFlow(ctx, {
+      gameId: args.gameId,
+      turnId: args.turnId,
+      propertyId: property._id,
+      propertyPosition: property.position,
+      propertyName: space.name,
+    });
+    return;
   }
 
   const turn = await ctx.db.get(args.turnId);
@@ -477,6 +454,7 @@ async function executeBuyPropertyHandler(
   const playerData = await ctx.db.get(args.playerId);
 
   if (wasDoubles && !playerData?.inJail) {
+    await addEvent("Rolled doubles - rolling again!");
     await ctx.db.patch(args.gameId, {
       waitingForLLM: false,
       pendingDecision: undefined,
@@ -496,7 +474,7 @@ async function executeBuyPropertyHandler(
 }
 
 async function executeJailHandler(
-  ctx: any,
+  ctx: MutationCtx,
   args: {
     gameId: Id<"games">;
     playerId: Id<"players">;
@@ -547,7 +525,7 @@ async function executeJailHandler(
 }
 
 async function executePrePostRollHandler(
-  ctx: any,
+  ctx: MutationCtx,
   args: {
     gameId: Id<"games">;
     playerId: Id<"players">;
@@ -555,6 +533,7 @@ async function executePrePostRollHandler(
     action: string;
     parameters: any;
     phase: string;
+    reasoning?: string;
   }
 ) {
   const game = await ctx.db.get(args.gameId);
@@ -573,15 +552,52 @@ async function executePrePostRollHandler(
   let nextPhase = game.currentPhase;
 
   if (args.action === "done") {
+    const turn = await ctx.db.get(args.turnId);
     if (args.phase === "pre_roll_actions") {
       nextPhase = "rolling";
     } else {
-      nextPhase = "turn_end";
+      if (turn?.wasDoubles && !player.inJail) {
+        await addEvent("Rolled doubles - rolling again!");
+        nextPhase = "rolling";
+      } else {
+        nextPhase = "turn_end";
+      }
     }
-  } else if (args.action === "build" && args.parameters?.propertyName) {
-    await addEvent(`Building on ${args.parameters.propertyName}`);
-  } else if (args.action === "mortgage" && args.parameters?.propertyName) {
-    await addEvent(`Mortgaging ${args.parameters.propertyName}`);
+  } else if (args.action === "build") {
+    const result = await applyBuildAction(ctx, {
+      gameId: args.gameId,
+      playerId: args.playerId,
+      turnId: args.turnId,
+      parameters: args.parameters,
+    });
+    await addEvent(result.message);
+  } else if (args.action === "mortgage") {
+    const result = await applyMortgageAction(ctx, {
+      gameId: args.gameId,
+      playerId: args.playerId,
+      turnId: args.turnId,
+      parameters: args.parameters,
+    });
+    await addEvent(result.message);
+  } else if (args.action === "unmortgage") {
+    const result = await applyUnmortgageAction(ctx, {
+      gameId: args.gameId,
+      playerId: args.playerId,
+      turnId: args.turnId,
+      parameters: args.parameters,
+    });
+    await addEvent(result.message);
+  } else if (args.action === "trade") {
+    const tradeStarted = await applyTradeAction(ctx, {
+      gameId: args.gameId,
+      playerId: args.playerId,
+      turnId: args.turnId,
+      parameters: args.parameters,
+      reasoning: args.reasoning,
+    });
+    if (tradeStarted) {
+      return;
+    }
   }
 
   await ctx.db.patch(args.gameId, {
@@ -593,6 +609,965 @@ async function executePrePostRollHandler(
   await ctx.scheduler.runAfter(game.config.speedMs, internal.gameEngine.processTurnStep, {
     gameId: args.gameId,
   });
+}
+
+async function executeAuctionBidHandler(
+  ctx: MutationCtx,
+  args: {
+    gameId: Id<"games">;
+    playerId: Id<"players">;
+    turnId: Id<"turns">;
+    action: string;
+    parameters: any;
+    context: Record<string, unknown>;
+  }
+) {
+  const game = await ctx.db.get(args.gameId);
+  if (!game) return;
+
+  const auctionContext = args.context as AuctionContext;
+  const player = await ctx.db.get(args.playerId);
+
+  if (!auctionContext || !player || !Array.isArray(auctionContext.bidderOrder)) {
+    await clearWaitingHandler(ctx, { gameId: args.gameId });
+    return;
+  }
+
+  const currentBid = auctionContext.currentBid ?? 0;
+  const minBid = currentBid + 1;
+
+  let bidAmount = Math.floor(Number(args.parameters?.amount ?? 0));
+  if (!Number.isFinite(bidAmount)) bidAmount = 0;
+  bidAmount = Math.max(0, Math.min(bidAmount, player.cash));
+
+  if (bidAmount < minBid) {
+    bidAmount = 0;
+  }
+
+  const bids = { ...(auctionContext.bids ?? {}) };
+  bids[args.playerId] = bidAmount;
+
+  const nextBid = bidAmount > currentBid ? bidAmount : currentBid;
+  const nextIndex = (auctionContext.bidderIndex ?? 0) + 1;
+
+  if (nextIndex < auctionContext.bidderOrder.length) {
+    const nextContext: AuctionContext = {
+      ...auctionContext,
+      currentBid: nextBid,
+      minBid: nextBid + 1,
+      bids,
+      bidderIndex: nextIndex,
+    };
+
+    const nextBidderId = auctionContext.bidderOrder[nextIndex];
+
+    await ctx.db.patch(args.gameId, {
+      waitingForLLM: true,
+      pendingDecision: { type: "auction_bid", context: JSON.stringify(nextContext) },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await ctx.scheduler.runAfter(0, (internal as any).llmDecisions.getLLMDecision, {
+      gameId: args.gameId,
+      playerId: nextBidderId,
+      turnId: args.turnId,
+      decisionType: "auction_bid",
+      context: JSON.stringify(nextContext),
+    });
+    return;
+  }
+
+  await resolveAuction(ctx, {
+    gameId: args.gameId,
+    turnId: args.turnId,
+    auctionContext: {
+      ...auctionContext,
+      currentBid: nextBid,
+      bids,
+      bidderIndex: nextIndex,
+    },
+  });
+}
+
+async function executeTradeResponseHandler(
+  ctx: MutationCtx,
+  args: {
+    gameId: Id<"games">;
+    playerId: Id<"players">;
+    turnId: Id<"turns">;
+    action: string;
+    parameters: any;
+    context: Record<string, unknown>;
+    reasoning: string;
+  }
+) {
+  const game = await ctx.db.get(args.gameId);
+  if (!game) return;
+
+  const tradeId = args.context.tradeId as Id<"trades"> | undefined;
+  if (!tradeId) {
+    await clearWaitingHandler(ctx, { gameId: args.gameId });
+    return;
+  }
+
+  const trade = await ctx.db.get(tradeId);
+  if (!trade || trade.status !== "pending") {
+    await clearWaitingHandler(ctx, { gameId: args.gameId });
+    return;
+  }
+
+  const proposer = await ctx.db.get(trade.proposerId);
+  const recipient = await ctx.db.get(trade.recipientId);
+  if (!proposer || !recipient) {
+    await clearWaitingHandler(ctx, { gameId: args.gameId });
+    return;
+  }
+
+  const allProperties = await ctx.db
+    .query("properties")
+    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .collect();
+
+  const offer: TradeOffer = {
+    offerMoney: trade.offerMoney,
+    offerProperties: trade.offerProperties,
+    offerGetOutOfJailCards: trade.offerGetOutOfJailCards,
+    requestMoney: trade.requestMoney,
+    requestProperties: trade.requestProperties,
+    requestGetOutOfJailCards: trade.requestGetOutOfJailCards,
+  };
+
+  if (args.action === "accept") {
+    // Re-validate with current state - players' assets may have changed since trade was proposed
+    const validation = canProposeTrade(proposer, recipient, offer, allProperties);
+    if (!validation.valid) {
+      await ctx.db.patch(tradeId, {
+        status: "rejected",
+        recipientReasoning: args.reasoning || validation.reason || "Trade no longer valid",
+      });
+      await appendTurnEvent(
+        ctx,
+        args.turnId,
+        `Trade rejected: ${validation.reason ?? "trade conditions no longer met"}`
+      );
+      await clearWaitingHandler(ctx, { gameId: args.gameId });
+      return;
+    }
+
+    // Verify property ownership hasn't changed
+    const proposerProps = allProperties.filter((p: Doc<"properties">) => p.ownerId === proposer._id);
+    const recipientProps = allProperties.filter((p: Doc<"properties">) => p.ownerId === recipient._id);
+
+    const proposerOwnsOffered = trade.offerProperties.every((propId: Id<"properties">) =>
+      proposerProps.some((p: Doc<"properties">) => p._id === propId)
+    );
+    const recipientOwnsRequested = trade.requestProperties.every((propId: Id<"properties">) =>
+      recipientProps.some((p: Doc<"properties">) => p._id === propId)
+    );
+
+    if (!proposerOwnsOffered || !recipientOwnsRequested) {
+      await ctx.db.patch(tradeId, {
+        status: "rejected",
+        recipientReasoning: "Property ownership changed since trade was proposed",
+      });
+      await appendTurnEvent(ctx, args.turnId, "Trade rejected: property ownership changed");
+      await clearWaitingHandler(ctx, { gameId: args.gameId });
+      return;
+    }
+
+    await ctx.db.patch(tradeId, {
+      status: "accepted",
+      recipientReasoning: args.reasoning,
+    });
+
+    await ctx.db.patch(proposer._id, {
+      cash: proposer.cash - trade.offerMoney + trade.requestMoney,
+      getOutOfJailCards:
+        proposer.getOutOfJailCards -
+        trade.offerGetOutOfJailCards +
+        trade.requestGetOutOfJailCards,
+    });
+
+    await ctx.db.patch(recipient._id, {
+      cash: recipient.cash - trade.requestMoney + trade.offerMoney,
+      getOutOfJailCards:
+        recipient.getOutOfJailCards -
+        trade.requestGetOutOfJailCards +
+        trade.offerGetOutOfJailCards,
+    });
+
+    for (const propId of trade.offerProperties) {
+      await ctx.db.patch(propId, { ownerId: recipient._id });
+    }
+    for (const propId of trade.requestProperties) {
+      await ctx.db.patch(propId, { ownerId: proposer._id });
+    }
+
+    await appendTurnEvent(
+      ctx,
+      args.turnId,
+      `Trade accepted: ${recipient.modelDisplayName} accepted ${proposer.modelDisplayName}'s offer`
+    );
+  } else if (args.action === "counter") {
+    const counter = await createCounterOffer(ctx, {
+      gameId: args.gameId,
+      turnId: args.turnId,
+      originalTradeId: tradeId,
+      proposer,
+      recipient,
+      parameters: args.parameters ?? {},
+      reasoning: args.reasoning,
+      allProperties,
+    });
+    if (counter.started) {
+      return;
+    }
+  } else {
+    await ctx.db.patch(tradeId, {
+      status: "rejected",
+      recipientReasoning: args.reasoning,
+    });
+    await appendTurnEvent(
+      ctx,
+      args.turnId,
+      `Trade rejected by ${recipient.modelDisplayName}`
+    );
+  }
+
+  await clearWaitingHandler(ctx, { gameId: args.gameId });
+}
+
+type AuctionContext = {
+  propertyId: Id<"properties">;
+  propertyName: string;
+  propertyPosition: number;
+  currentBid: number;
+  minBid: number;
+  bidderOrder: Id<"players">[];
+  bidderIndex: number;
+  bids: Record<string, number>;
+};
+
+async function startAuctionFlow(
+  ctx: MutationCtx,
+  args: {
+    gameId: Id<"games">;
+    turnId: Id<"turns">;
+    propertyId: Id<"properties">;
+    propertyPosition: number;
+    propertyName: string;
+  }
+) {
+  const game = await ctx.db.get(args.gameId);
+  if (!game) return;
+
+  const players = await ctx.db
+    .query("players")
+    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .collect();
+
+  const activePlayers = players.filter((p: any) => !p.isBankrupt);
+  activePlayers.sort((a: any, b: any) => a.turnOrder - b.turnOrder);
+
+  if (activePlayers.length === 0) {
+    await appendTurnEvent(ctx, args.turnId, `Auction canceled for ${args.propertyName}`);
+    await clearWaitingHandler(ctx, { gameId: args.gameId });
+    return;
+  }
+
+  const bidderOrder = activePlayers.map((p: any) => p._id);
+  const context: AuctionContext = {
+    propertyId: args.propertyId,
+    propertyName: args.propertyName,
+    propertyPosition: args.propertyPosition,
+    currentBid: 0,
+    minBid: 1,
+    bidderOrder,
+    bidderIndex: 0,
+    bids: {},
+  };
+
+  await ctx.db.patch(args.gameId, {
+    waitingForLLM: true,
+    pendingDecision: { type: "auction_bid", context: JSON.stringify(context) },
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await ctx.scheduler.runAfter(0, (internal as any).llmDecisions.getLLMDecision, {
+    gameId: args.gameId,
+    playerId: bidderOrder[0],
+    turnId: args.turnId,
+    decisionType: "auction_bid",
+    context: JSON.stringify(context),
+  });
+}
+
+async function resolveAuction(
+  ctx: MutationCtx,
+  args: {
+    gameId: Id<"games">;
+    turnId: Id<"turns">;
+    auctionContext: AuctionContext;
+  }
+) {
+  const game = await ctx.db.get(args.gameId);
+  if (!game) return;
+
+  const property = await ctx.db.get(args.auctionContext.propertyId);
+  if (!property) {
+    await clearWaitingHandler(ctx, { gameId: args.gameId });
+    return;
+  }
+
+  let highestBid = 0;
+  let winnerId: Id<"players"> | null = null;
+
+  for (const bidderId of args.auctionContext.bidderOrder) {
+    const bid = args.auctionContext.bids[bidderId] ?? 0;
+    if (bid > highestBid) {
+      highestBid = bid;
+      winnerId = bidderId;
+    }
+  }
+
+  if (winnerId && highestBid > 0) {
+    const winner = await ctx.db.get(winnerId);
+    if (winner) {
+      await ctx.db.patch(property._id, { ownerId: winnerId });
+      await ctx.db.patch(winnerId, { cash: winner.cash - highestBid });
+      await appendTurnEvent(
+        ctx,
+        args.turnId,
+        `Auction: ${winner.modelDisplayName} won ${args.auctionContext.propertyName} for $${highestBid}`
+      );
+      await ctx.scheduler.runAfter(0, internal.statsAggregator.updateAuctionStats, {
+        propertyName: args.auctionContext.propertyName,
+        auctionPrice: highestBid,
+      });
+    }
+  } else {
+    await appendTurnEvent(
+      ctx,
+      args.turnId,
+      `Auction: No valid bids for ${args.auctionContext.propertyName}`
+    );
+  }
+
+  const turn = await ctx.db.get(args.turnId);
+  const currentPlayer = turn ? await ctx.db.get(turn.playerId) : null;
+
+  const nextPhase =
+    turn?.wasDoubles && currentPlayer && !currentPlayer.inJail ? "rolling" : "turn_end";
+
+  if (nextPhase === "rolling") {
+    await appendTurnEvent(ctx, args.turnId, "Rolled doubles - rolling again!");
+  }
+
+  await ctx.db.patch(args.gameId, {
+    waitingForLLM: false,
+    pendingDecision: undefined,
+    currentPhase: nextPhase,
+  });
+
+  await ctx.scheduler.runAfter(game.config.speedMs, internal.gameEngine.processTurnStep, {
+    gameId: args.gameId,
+  });
+}
+
+async function applyBuildAction(
+  ctx: MutationCtx,
+  args: {
+    gameId: Id<"games">;
+    playerId: Id<"players">;
+    turnId: Id<"turns">;
+    parameters: Record<string, unknown>;
+  }
+): Promise<{ message: string }> {
+  const propertyName = extractPropertyName(args.parameters);
+  if (!propertyName) {
+    return { message: "Build failed: missing property name" };
+  }
+
+  const player = await ctx.db.get(args.playerId);
+  if (!player) return { message: "Build failed: player not found" };
+
+  const allProperties = await ctx.db
+    .query("properties")
+    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .collect();
+
+  const property = findPropertyByName(allProperties, propertyName);
+  if (!property) {
+    return { message: `Build failed: property "${propertyName}" not found` };
+  }
+
+  const count = extractBuildCount(args.parameters);
+  const houseCost = getHouseCost(property.position);
+  let housesBuilt = 0;
+  let remainingCash = player.cash;
+  let lastReason = "Invalid build";
+
+  const updatedProperties = allProperties.map((p: any) =>
+    p._id === property._id ? { ...p } : p
+  );
+  const target = updatedProperties.find((p: any) => p._id === property._id);
+
+  for (let i = 0; i < count; i++) {
+    const validation = canBuildHouse(
+      { ...player, cash: remainingCash },
+      target,
+      updatedProperties
+    );
+    if (!validation.valid) {
+      lastReason = validation.reason ?? lastReason;
+      break;
+    }
+    remainingCash -= houseCost;
+    target.houses += 1;
+    housesBuilt += 1;
+  }
+
+  if (housesBuilt > 0) {
+    await ctx.db.patch(target._id, { houses: target.houses });
+    await ctx.db.patch(player._id, { cash: remainingCash });
+    return {
+      message: `Built ${housesBuilt} house(s) on ${target.name} for $${housesBuilt * houseCost}`,
+    };
+  }
+
+  return { message: `Build failed: ${lastReason}` };
+}
+
+async function applyMortgageAction(
+  ctx: MutationCtx,
+  args: {
+    gameId: Id<"games">;
+    playerId: Id<"players">;
+    turnId: Id<"turns">;
+    parameters: Record<string, unknown>;
+  }
+): Promise<{ message: string }> {
+  const propertyName = extractPropertyName(args.parameters);
+  if (!propertyName) {
+    return { message: "Mortgage failed: missing property name" };
+  }
+
+  const player = await ctx.db.get(args.playerId);
+  if (!player) return { message: "Mortgage failed: player not found" };
+
+  const allProperties = await ctx.db
+    .query("properties")
+    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .collect();
+
+  const property = findPropertyByName(allProperties, propertyName);
+  if (!property) {
+    return { message: `Mortgage failed: property "${propertyName}" not found` };
+  }
+
+  const validation = canMortgage(player, property, allProperties);
+  if (!validation.valid) {
+    return { message: `Mortgage failed: ${validation.reason ?? "invalid"}` };
+  }
+
+  const mortgageValue = getMortgageValue(property.position);
+  await ctx.db.patch(property._id, { isMortgaged: true });
+  await ctx.db.patch(player._id, { cash: player.cash + mortgageValue });
+
+  return { message: `Mortgaged ${property.name} for $${mortgageValue}` };
+}
+
+async function applyUnmortgageAction(
+  ctx: MutationCtx,
+  args: {
+    gameId: Id<"games">;
+    playerId: Id<"players">;
+    turnId: Id<"turns">;
+    parameters: Record<string, unknown>;
+  }
+): Promise<{ message: string }> {
+  const propertyName = extractPropertyName(args.parameters);
+  if (!propertyName) {
+    return { message: "Unmortgage failed: missing property name" };
+  }
+
+  const player = await ctx.db.get(args.playerId);
+  if (!player) return { message: "Unmortgage failed: player not found" };
+
+  const allProperties = await ctx.db
+    .query("properties")
+    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .collect();
+
+  const property = findPropertyByName(allProperties, propertyName);
+  if (!property) {
+    return { message: `Unmortgage failed: property "${propertyName}" not found` };
+  }
+
+  const validation = canUnmortgage(player, property);
+  if (!validation.valid) {
+    return { message: `Unmortgage failed: ${validation.reason ?? "invalid"}` };
+  }
+
+  const unmortgageCost = getUnmortgageCost(property.position);
+  await ctx.db.patch(property._id, { isMortgaged: false });
+  await ctx.db.patch(player._id, { cash: player.cash - unmortgageCost });
+
+  return { message: `Unmortgaged ${property.name} for $${unmortgageCost}` };
+}
+
+async function applyTradeAction(
+  ctx: MutationCtx,
+  args: {
+    gameId: Id<"games">;
+    playerId: Id<"players">;
+    turnId: Id<"turns">;
+    parameters: Record<string, unknown>;
+    reasoning?: string;
+  }
+): Promise<boolean> {
+  const recipientName =
+    (args.parameters.recipientName as string) ||
+    (args.parameters.recipient as string);
+
+  if (!recipientName) {
+    await appendTurnEvent(ctx, args.turnId, "Trade failed: missing recipient name");
+    return false;
+  }
+
+  const game = await ctx.db.get(args.gameId);
+  const proposer = await ctx.db.get(args.playerId);
+  if (!game || !proposer) return false;
+
+  const allPlayers = await ctx.db
+    .query("players")
+    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .collect();
+
+  const recipient = findPlayerByName(allPlayers, recipientName);
+  if (!recipient || recipient._id === proposer._id || recipient.isBankrupt) {
+    await appendTurnEvent(ctx, args.turnId, `Trade failed: recipient "${recipientName}" not found`);
+    return false;
+  }
+
+  const allProperties = await ctx.db
+    .query("properties")
+    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .collect();
+
+  const offerPropertyNames = normalizeStringArray(args.parameters.offerProperties);
+  const requestPropertyNames = normalizeStringArray(args.parameters.requestProperties);
+
+  const offerProperties = mapPropertyNamesToIds(allProperties, offerPropertyNames, proposer._id);
+  const requestProperties = mapPropertyNamesToIds(allProperties, requestPropertyNames, recipient._id);
+
+  if (offerProperties.missing.length > 0) {
+    await appendTurnEvent(
+      ctx,
+      args.turnId,
+      `Trade failed: proposer missing ${offerProperties.missing.join(", ")}`
+    );
+    return false;
+  }
+  if (requestProperties.missing.length > 0) {
+    await appendTurnEvent(
+      ctx,
+      args.turnId,
+      `Trade failed: recipient missing ${requestProperties.missing.join(", ")}`
+    );
+    return false;
+  }
+
+  const offerMoney = coerceNumber(args.parameters.offerMoney);
+  const requestMoney = coerceNumber(args.parameters.requestMoney);
+  const offerGetOutOfJailCards = coerceNumber(args.parameters.offerGetOutOfJailCards);
+  const requestGetOutOfJailCards = coerceNumber(args.parameters.requestGetOutOfJailCards);
+
+  const offer: TradeOffer = {
+    offerMoney,
+    offerProperties: offerProperties.ids,
+    offerGetOutOfJailCards,
+    requestMoney,
+    requestProperties: requestProperties.ids,
+    requestGetOutOfJailCards,
+  };
+
+  const validation = canProposeTrade(proposer, recipient, offer, allProperties);
+  if (!validation.valid) {
+    await appendTurnEvent(
+      ctx,
+      args.turnId,
+      `Trade failed: ${validation.reason ?? "invalid offer"}`
+    );
+    return false;
+  }
+
+  const tradeId = await ctx.db.insert("trades", {
+    gameId: args.gameId,
+    turnNumber: game.currentTurnNumber,
+    proposerId: proposer._id,
+    recipientId: recipient._id,
+    offerMoney,
+    offerProperties: offerProperties.ids,
+    offerGetOutOfJailCards,
+    requestMoney,
+    requestProperties: requestProperties.ids,
+    requestGetOutOfJailCards,
+    status: "pending",
+    proposerReasoning: args.reasoning ?? "",
+    counterDepth: 0,
+  });
+
+  const context = buildTradeContext(
+    tradeId,
+    proposer,
+    {
+      offerMoney,
+      offerProperties: offerProperties.ids,
+      offerGetOutOfJailCards,
+      requestMoney,
+      requestProperties: requestProperties.ids,
+      requestGetOutOfJailCards,
+    },
+    allProperties
+  );
+
+  await ctx.db.patch(args.gameId, {
+    waitingForLLM: true,
+    pendingDecision: { type: "trade_response", context },
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await ctx.scheduler.runAfter(0, (internal as any).llmDecisions.getLLMDecision, {
+    gameId: args.gameId,
+    playerId: recipient._id,
+    turnId: args.turnId,
+    decisionType: "trade_response",
+    context,
+  });
+
+  await appendTurnEvent(ctx, args.turnId, `Proposed trade to ${recipient.modelDisplayName}`);
+
+  return true;
+}
+
+async function createCounterOffer(
+  ctx: MutationCtx,
+  args: {
+    gameId: Id<"games">;
+    turnId: Id<"turns">;
+    originalTradeId: Id<"trades">;
+    proposer: Doc<"players">;
+    recipient: Doc<"players">;
+    parameters: Record<string, unknown>;
+    reasoning: string;
+    allProperties: Array<Doc<"properties">>;
+  }
+): Promise<{ started: boolean }> {
+  const originalTrade = await ctx.db.get(args.originalTradeId);
+  const currentDepth = originalTrade?.counterDepth ?? 0;
+  const maxDepth = 3;
+
+  if (currentDepth >= maxDepth) {
+    await ctx.db.patch(args.originalTradeId, {
+      status: "rejected",
+      recipientReasoning: args.reasoning || "Counter limit reached",
+    });
+    await appendTurnEvent(
+      ctx,
+      args.turnId,
+      `Trade rejected: counter limit of ${maxDepth} reached`
+    );
+    return { started: false };
+  }
+
+  const counterProposer = args.recipient;
+  const counterRecipient = args.proposer;
+
+  const offerPropertyNames = normalizeStringArray(args.parameters.offerProperties);
+  const requestPropertyNames = normalizeStringArray(args.parameters.requestProperties);
+
+  const offerProperties = mapPropertyNamesToIds(
+    args.allProperties,
+    offerPropertyNames,
+    counterProposer._id
+  );
+  const requestProperties = mapPropertyNamesToIds(
+    args.allProperties,
+    requestPropertyNames,
+    counterRecipient._id
+  );
+
+  const offerMoney = coerceNumber(args.parameters.offerMoney);
+  const requestMoney = coerceNumber(args.parameters.requestMoney);
+  const offerGetOutOfJailCards = coerceNumber(args.parameters.offerGetOutOfJailCards);
+  const requestGetOutOfJailCards = coerceNumber(args.parameters.requestGetOutOfJailCards);
+
+  const hasAnyTerms =
+    offerMoney > 0 ||
+    requestMoney > 0 ||
+    offerGetOutOfJailCards > 0 ||
+    requestGetOutOfJailCards > 0 ||
+    offerProperties.ids.length > 0 ||
+    requestProperties.ids.length > 0;
+
+  if (!hasAnyTerms) {
+    await ctx.db.patch(args.originalTradeId, {
+      status: "rejected",
+      recipientReasoning: args.reasoning || "Invalid counter offer",
+    });
+    await appendTurnEvent(
+      ctx,
+      args.turnId,
+      `Trade counter failed: ${args.recipient.modelDisplayName} provided no terms`
+    );
+    return { started: false };
+  }
+
+  if (offerProperties.missing.length > 0 || requestProperties.missing.length > 0) {
+    await ctx.db.patch(args.originalTradeId, {
+      status: "rejected",
+      recipientReasoning: args.reasoning || "Invalid counter offer",
+    });
+    await appendTurnEvent(ctx, args.turnId, "Trade counter failed: invalid properties requested");
+    return { started: false };
+  }
+
+  const counterOffer: TradeOffer = {
+    offerMoney,
+    offerProperties: offerProperties.ids,
+    offerGetOutOfJailCards,
+    requestMoney,
+    requestProperties: requestProperties.ids,
+    requestGetOutOfJailCards,
+  };
+
+  if (originalTrade && isEquivalentCounter(counterOffer, originalTrade)) {
+    await ctx.db.patch(args.originalTradeId, {
+      status: "rejected",
+      recipientReasoning: args.reasoning || "Counter offer matches original terms",
+    });
+    await appendTurnEvent(
+      ctx,
+      args.turnId,
+      "Trade rejected: counter offer matches original terms"
+    );
+    return { started: false };
+  }
+
+  const validation = canProposeTrade(
+    counterProposer,
+    counterRecipient,
+    counterOffer,
+    args.allProperties
+  );
+  if (!validation.valid) {
+    await ctx.db.patch(args.originalTradeId, {
+      status: "rejected",
+      recipientReasoning: args.reasoning || validation.reason || "Invalid counter offer",
+    });
+    await appendTurnEvent(
+      ctx,
+      args.turnId,
+      `Trade counter failed: ${validation.reason ?? "invalid offer"}`
+    );
+    return { started: false };
+  }
+
+  await ctx.db.patch(args.originalTradeId, {
+    status: "countered",
+    recipientReasoning: args.reasoning,
+  });
+
+  const game = await ctx.db.get(args.gameId);
+  const counterTradeId = await ctx.db.insert("trades", {
+    gameId: args.gameId,
+    turnNumber: game?.currentTurnNumber ?? 0,
+    proposerId: counterProposer._id,
+    recipientId: counterRecipient._id,
+    offerMoney,
+    offerProperties: offerProperties.ids,
+    offerGetOutOfJailCards,
+    requestMoney,
+    requestProperties: requestProperties.ids,
+    requestGetOutOfJailCards,
+    status: "pending",
+    proposerReasoning: args.reasoning ?? "",
+    counterDepth: currentDepth + 1,
+  });
+
+  const context = buildTradeContext(
+    counterTradeId,
+    counterProposer,
+    {
+      offerMoney,
+      offerProperties: offerProperties.ids,
+      offerGetOutOfJailCards,
+      requestMoney,
+      requestProperties: requestProperties.ids,
+      requestGetOutOfJailCards,
+    },
+    args.allProperties
+  );
+
+  await ctx.db.patch(args.gameId, {
+    waitingForLLM: true,
+    pendingDecision: { type: "trade_response", context },
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await ctx.scheduler.runAfter(0, (internal as any).llmDecisions.getLLMDecision, {
+    gameId: args.gameId,
+    playerId: counterRecipient._id,
+    turnId: args.turnId,
+    decisionType: "trade_response",
+    context,
+  });
+
+  await appendTurnEvent(
+    ctx,
+    args.turnId,
+    `Trade countered by ${counterProposer.modelDisplayName}`
+  );
+
+  return { started: true };
+}
+
+function safeParseContext(context: string): Record<string, unknown> {
+  try {
+    return JSON.parse(context) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+async function appendTurnEvent(ctx: MutationCtx, turnId: Id<"turns">, event: string) {
+  const turn = await ctx.db.get(turnId);
+  if (turn) {
+    await ctx.db.patch(turnId, {
+      events: [...turn.events, event],
+    });
+  }
+}
+
+function normalizeString(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function normalizeIdArray(ids: Id<"properties">[]): string[] {
+  return ids.map((id) => id.toString()).sort();
+}
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+function isEquivalentCounter(counter: TradeOffer, original: Doc<"trades">): boolean {
+  const offerMatchesRequest =
+    counter.offerMoney === original.requestMoney &&
+    counter.offerGetOutOfJailCards === original.requestGetOutOfJailCards &&
+    arraysEqual(
+      normalizeIdArray(counter.offerProperties),
+      normalizeIdArray(original.requestProperties)
+    );
+
+  const requestMatchesOffer =
+    counter.requestMoney === original.offerMoney &&
+    counter.requestGetOutOfJailCards === original.offerGetOutOfJailCards &&
+    arraysEqual(
+      normalizeIdArray(counter.requestProperties),
+      normalizeIdArray(original.offerProperties)
+    );
+
+  return offerMatchesRequest && requestMatchesOffer;
+}
+
+function buildTradeContext(
+  tradeId: Id<"trades">,
+  proposer: Doc<"players">,
+  offer: TradeOffer,
+  allProperties: Array<Doc<"properties">>
+): string {
+  const offerPropertyDisplay = offer.offerProperties.map(
+    (id) => allProperties.find((p) => p._id === id)?.name ?? id
+  );
+  const requestPropertyDisplay = offer.requestProperties.map(
+    (id) => allProperties.find((p) => p._id === id)?.name ?? id
+  );
+
+  return JSON.stringify({
+    tradeId,
+    proposerName: proposer.modelDisplayName,
+    offer: {
+      money: offer.offerMoney,
+      properties: offerPropertyDisplay,
+      jailCards: offer.offerGetOutOfJailCards,
+    },
+    request: {
+      money: offer.requestMoney,
+      properties: requestPropertyDisplay,
+      jailCards: offer.requestGetOutOfJailCards,
+    },
+  });
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => typeof item === "string")
+    .map((item) => normalizeString(item))
+    .filter((item) => item.length > 0);
+}
+
+function mapPropertyNamesToIds(
+  properties: Array<Doc<"properties">>,
+  names: string[],
+  ownerId: Id<"players">
+): { ids: Id<"properties">[]; missing: string[] } {
+  const ids: Id<"properties">[] = [];
+  const missing: string[] = [];
+
+  for (const name of names) {
+    const property = properties.find(
+      (p) => normalizeString(p.name) === name && p.ownerId === ownerId
+    );
+    if (property) {
+      ids.push(property._id);
+    } else {
+      missing.push(name);
+    }
+  }
+
+  return { ids, missing };
+}
+
+function findPropertyByName(
+  properties: Array<Doc<"properties">>,
+  name: string
+) {
+  const target = normalizeString(name);
+  return properties.find((property) => normalizeString(property.name) === target) ?? null;
+}
+
+function findPlayerByName(
+  players: Array<Doc<"players">>,
+  name: string
+) {
+  const target = normalizeString(name);
+  return players.find((player) => normalizeString(player.modelDisplayName) === target) ?? null;
+}
+
+function coerceNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.floor(value);
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return 0;
 }
 
 // ============================================================

@@ -168,7 +168,7 @@ function LiveGamePage() {
     );
   }).slice(0, 50);
 
-  const isPaused = game.status !== "in_progress";
+  const isPaused = game.isPaused === true;
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col lg:flex-row gap-4 p-4">
@@ -180,12 +180,18 @@ function LiveGamePage() {
             <Badge variant="info" size="md">
               Turn {game.currentTurnNumber}
             </Badge>
-            <Badge
-              variant={game.currentPhase === "rolling" ? "success" : "neutral"}
-              size="md"
-            >
-              {game.currentPhase.replace("_", " ")}
-            </Badge>
+            {isPaused ? (
+              <Badge variant="warning" size="md">
+                PAUSED
+              </Badge>
+            ) : (
+              <Badge
+                variant={game.currentPhase === "rolling" ? "success" : "neutral"}
+                size="md"
+              >
+                {game.currentPhase.replace("_", " ")}
+              </Badge>
+            )}
             {currentPlayer && (
               <div className="flex items-center gap-2">
                 <div
@@ -201,7 +207,7 @@ function LiveGamePage() {
 
           <div className="flex items-center gap-2">
             <GameControlsCompact
-              isPlaying={game.status === "in_progress"}
+              isPlaying={game.status === "in_progress" && !isPaused}
               isPaused={isPaused}
               onPause={() => pauseGame.mutate({ gameId: typedGameId })}
               onPlay={() => resumeGame.mutate({ gameId: typedGameId })}
@@ -231,23 +237,40 @@ function LiveGamePage() {
           >
             {/* Center content: dice and current player */}
             <div className="flex flex-col items-center gap-4">
-              <h2 className="text-xl font-bold text-white">MONOPOLY</h2>
-              {currentTurn?.diceRoll && (
-                <DiceDisplay
-                  dice={currentTurn.diceRoll as [number, number]}
-                  isRolling={game.currentPhase === "rolling"}
-                />
-              )}
-              {currentPlayer && (
-                <div className="text-center">
-                  <p className="text-sm text-slate-400">Current Player</p>
-                  <p
-                    className="font-bold"
-                    style={{ color: currentPlayer.tokenColor }}
+              {/* Pause overlay */}
+              {isPaused ? (
+                <div className="flex flex-col items-center gap-4 py-4 bg-white/80 rounded-lg px-6">
+                  <div className="text-4xl">⏸️</div>
+                  <p className="text-lg font-semibold text-yellow-600">Game Paused</p>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => resumeGame.mutate({ gameId: typedGameId })}
+                    loading={resumeGame.isPending}
                   >
-                    {currentPlayer.modelDisplayName}
-                  </p>
+                    Resume Game
+                  </Button>
                 </div>
+              ) : (
+                <>
+                  {currentTurn?.diceRoll && (
+                    <DiceDisplay
+                      dice={currentTurn.diceRoll as [number, number]}
+                      isRolling={game.currentPhase === "rolling"}
+                    />
+                  )}
+                  {currentPlayer && (
+                    <div className="text-center bg-white/60 rounded-lg px-4 py-2">
+                      <p className="text-sm text-slate-600">Current Player</p>
+                      <p
+                        className="font-bold text-lg"
+                        style={{ color: currentPlayer.tokenColor }}
+                      >
+                        {currentPlayer.modelDisplayName}
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </Board>
