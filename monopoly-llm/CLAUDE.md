@@ -103,7 +103,7 @@ OPENROUTER_API_KEY=      # Get from openrouter.ai
 ## Current Phase
 
 <!-- Update this as you progress -->
-Phase: 8 COMPLETE
+Phase: 9 COMPLETE
 Completed:
 - Phase 1: Project scaffolding (TanStack Start + Convex)
 - Phase 2: Database schema (10 tables)
@@ -124,8 +124,18 @@ Completed:
   - Game components: Board (11x11 CSS Grid), BoardSpace (conditional rendering by type), PlayerToken, PlayerPanel (properties grouped by color), DiceDisplay (dot patterns), ActionLog (scrolling events), LLMThinking (spinner/decision), GameControls (play/pause/speed), TradeModal (two-column layout)
   - Setup components: ModelSelector (grouped by provider), PlayerConfigurator (model + color + name), GameSettings (speed/turns/money)
   - All components export via index.ts files
+- Phase 9: Pages & Routes
+  - __root.tsx: Navigation header, Footer, NotFoundPage, RootDocument with providers
+  - index.tsx: Landing page with hero, quick stats, recent games, how it works, feature cards
+  - play/index.tsx: Multi-step game setup wizard (Players → Settings → Review)
+  - play/$gameId.tsx: Live game view with Board, PlayerPanel sidebar, ActionLog, GameControls
+  - games/index.tsx: Game history list with filters, stats row
+  - games/$gameId.tsx: Game replay with turn selector, board state at turn, turn details
+  - analytics/index.tsx: Dashboard with stats cards, quick links, model overview
+  - analytics/leaderboard.tsx: Sortable leaderboard table with rankings
+  - analytics/head-to-head.tsx: Model comparison with selectors and win visualization
 
-Working on: Phase 9
+Working on: Phase 10 (Integration Testing / Polish)
 
 ## Implementation Notes
 
