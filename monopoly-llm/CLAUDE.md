@@ -103,7 +103,7 @@ OPENROUTER_API_KEY=      # Get from openrouter.ai
 ## Current Phase
 
 <!-- Update this as you progress -->
-Phase: 7 COMPLETE
+Phase: 8 COMPLETE
 Completed:
 - Phase 1: Project scaffolding (TanStack Start + Convex)
 - Phase 2: Database schema (10 tables)
@@ -119,8 +119,13 @@ Completed:
   - Controls: pauseGame, resumeGame, setSpeed, abandonGame, triggerNextStep
   - Helper mutations: movePlayer, payRent, buyProperty, runAuction, buildHouse, mortgageProperty, unmortgageProperty, processBankruptcyMutation
   - Scheduling: automatic turn progression via ctx.scheduler + scheduler.ts helper
+- Phase 8: UI Components
+  - UI base: Button (variants/sizes/loading), Card (Header/Body/Footer), Modal (portal/escape/overlay), Select (option groups), Badge (variants/sizes)
+  - Game components: Board (11x11 CSS Grid), BoardSpace (conditional rendering by type), PlayerToken, PlayerPanel (properties grouped by color), DiceDisplay (dot patterns), ActionLog (scrolling events), LLMThinking (spinner/decision), GameControls (play/pause/speed), TradeModal (two-column layout)
+  - Setup components: ModelSelector (grouped by provider), PlayerConfigurator (model + color + name), GameSettings (speed/turns/money)
+  - All components export via index.ts files
 
-Working on: Phase 8
+Working on: Phase 9
 
 ## Implementation Notes
 
