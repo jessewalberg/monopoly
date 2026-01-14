@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
 @layer base {
   html,
   body {
@@ -9,4 +13,304 @@
   .using-mouse * {
     outline: none !important;
   }
+}
+
+/* ============================================================
+   CUSTOM ANIMATIONS
+   ============================================================ */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(34, 197, 94, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+  }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes dice-roll {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(90deg) scale(1.1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1);
+  }
+  75% {
+    transform: rotate(270deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes token-move {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2) translateY(-10px);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================================
+   ANIMATION UTILITY CLASSES
+   ============================================================ */
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 1s ease-in-out infinite;
+}
+
+.animate-dice-roll {
+  animation: dice-roll 0.5s ease-in-out;
+}
+
+.animate-token-move {
+  animation: token-move 0.4s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+.animate-slide-in-up {
+  animation: slide-in-up 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out;
+}
+
+/* ============================================================
+   TRANSITION UTILITIES
+   ============================================================ */
+
+.transition-game {
+  transition: all 0.2s ease-out;
+}
+
+.transition-property {
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+/* ============================================================
+   INTERACTIVE STATES
+   ============================================================ */
+
+.game-card {
+  @apply transition-all duration-200 ease-out;
+}
+
+.game-card:hover {
+  @apply transform -translate-y-1 shadow-lg;
+}
+
+.game-button {
+  @apply transition-all duration-150 ease-out active:scale-95;
+}
+
+.property-card {
+  @apply transition-property;
+}
+
+.property-card:hover {
+  @apply transform scale-105;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================================
+   PLAYER TOKEN STYLES
+   ============================================================ */
+
+.player-token {
+  @apply transition-all duration-300 ease-out;
+}
+
+.player-token.active {
+  @apply animate-bounce-subtle;
+}
+
+.player-token.moving {
+  @apply animate-token-move;
+}
+
+/* ============================================================
+   DICE STYLES
+   ============================================================ */
+
+.dice {
+  @apply transition-transform duration-200;
+}
+
+.dice.rolling {
+  @apply animate-dice-roll;
+}
+
+/* ============================================================
+   FOCUS STYLES
+   ============================================================ */
+
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-slate-900;
+}
+
+/* ============================================================
+   KEYBOARD NAVIGATION HINTS
+   ============================================================ */
+
+.kbd {
+  @apply inline-flex items-center justify-center px-2 py-1 text-xs font-mono font-medium
+         bg-slate-700 border border-slate-600 rounded shadow-sm;
+  min-width: 1.5rem;
+}
+
+/* ============================================================
+   SCROLLBAR STYLES
+   ============================================================ */
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================
+   GAME-SPECIFIC STYLES
+   ============================================================ */
+
+/* Monopoly board property colors */
+.property-brown { background-color: #8B4513; }
+.property-light-blue { background-color: #87CEEB; }
+.property-pink { background-color: #FF69B4; }
+.property-orange { background-color: #FFA500; }
+.property-red { background-color: #FF0000; }
+.property-yellow { background-color: #FFD700; }
+.property-green { background-color: #228B22; }
+.property-dark-blue { background-color: #00008B; }
+.property-railroad { background-color: #000000; }
+.property-utility { background-color: #808080; }
+
+/* Current player indicator */
+.current-player {
+  @apply relative;
+}
+
+.current-player::before {
+  content: '';
+  @apply absolute -left-2 top-0 bottom-0 w-1 bg-green-500 rounded-full animate-pulse;
+}
+
+/* Winner celebration */
+.winner-crown {
+  @apply animate-bounce-subtle;
+}
+
+/* Turn indicator */
+.turn-indicator {
+  @apply relative overflow-hidden;
+}
+
+.turn-indicator::after {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent;
+  animation: shimmer 2s linear infinite;
 }
