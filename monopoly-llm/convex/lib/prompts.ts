@@ -1,5 +1,4 @@
-import { Id } from "../_generated/dataModel";
-import { BOARD } from "./constants";
+import type { Id } from "../_generated/dataModel";
 import { getSpace, getGroupPositions } from "./board";
 import type { DecisionType, GamePhase } from "./types";
 
@@ -200,7 +199,7 @@ export function serializeGameState(
 
 function buildBuyPropertyPrompt(
   context: Record<string, unknown>,
-  validActions: string[]
+  _validActions: string[]
 ): string {
   const propertyName = context.propertyName as string;
   const cost = context.cost as number;
@@ -220,7 +219,7 @@ function buildBuyPropertyPrompt(
 function buildAuctionBidPrompt(
   context: Record<string, unknown>,
   player: PlayerInfo,
-  validActions: string[]
+  _validActions: string[]
 ): string {
   const propertyName = context.propertyName as string;
   const currentBid = (context.currentBid as number) || 0;
@@ -240,7 +239,7 @@ function buildAuctionBidPrompt(
 }
 
 function buildJailStrategyPrompt(
-  player: PlayerInfo,
+  _player: PlayerInfo,
   validActions: string[]
 ): string {
   let prompt = `=== DECISION: JAIL STRATEGY ===\n`;
@@ -263,8 +262,8 @@ function buildJailStrategyPrompt(
 }
 
 function buildPreRollPrompt(
-  player: PlayerInfo,
-  properties: PropertyInfo[],
+  _player: PlayerInfo,
+  _properties: PropertyInfo[],
   validActions: string[]
 ): string {
   let prompt = `=== DECISION: PRE-ROLL ACTIONS ===\n`;
@@ -293,8 +292,8 @@ function buildPreRollPrompt(
 }
 
 function buildPostRollPrompt(
-  player: PlayerInfo,
-  properties: PropertyInfo[],
+  _player: PlayerInfo,
+  _properties: PropertyInfo[],
   validActions: string[]
 ): string {
   let prompt = `=== DECISION: POST-ROLL ACTIONS ===\n`;
@@ -318,7 +317,7 @@ function buildPostRollPrompt(
 
 function buildTradeResponsePrompt(
   context: Record<string, unknown>,
-  validActions: string[]
+  _validActions: string[]
 ): string {
   const proposerName = context.proposerName as string;
   const offer = context.offer as Record<string, unknown>;

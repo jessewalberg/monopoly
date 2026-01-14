@@ -1,11 +1,10 @@
 import {
-  PROPERTY_GROUPS,
   RAILROAD_RENT,
   UTILITY_MULTIPLIER_ONE,
   UTILITY_MULTIPLIER_BOTH,
 } from "./constants";
 import { getSpace, getGroupPositions } from "./board";
-import { Id } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 
 // ============================================================
 // TYPES

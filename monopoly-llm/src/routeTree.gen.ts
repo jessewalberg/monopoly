@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PlayRouteImport } from './routes/play'
 import { Route as GamesRouteImport } from './routes/games'
-import { Route as AnotherPageRouteImport } from './routes/anotherPage'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -23,11 +22,6 @@ const PlayRoute = PlayRouteImport.update({
 const GamesRoute = GamesRouteImport.update({
   id: '/games',
   path: '/games',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AnotherPageRoute = AnotherPageRouteImport.update({
-  id: '/anotherPage',
-  path: '/anotherPage',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
@@ -44,14 +38,12 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/anotherPage': typeof AnotherPageRoute
   '/games': typeof GamesRoute
   '/play': typeof PlayRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/anotherPage': typeof AnotherPageRoute
   '/games': typeof GamesRoute
   '/play': typeof PlayRoute
 }
@@ -59,22 +51,20 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/anotherPage': typeof AnotherPageRoute
   '/games': typeof GamesRoute
   '/play': typeof PlayRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/analytics' | '/anotherPage' | '/games' | '/play'
+  fullPaths: '/' | '/analytics' | '/games' | '/play'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/analytics' | '/anotherPage' | '/games' | '/play'
-  id: '__root__' | '/' | '/analytics' | '/anotherPage' | '/games' | '/play'
+  to: '/' | '/analytics' | '/games' | '/play'
+  id: '__root__' | '/' | '/analytics' | '/games' | '/play'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
-  AnotherPageRoute: typeof AnotherPageRoute
   GamesRoute: typeof GamesRoute
   PlayRoute: typeof PlayRoute
 }
@@ -93,13 +83,6 @@ declare module '@tanstack/react-router' {
       path: '/games'
       fullPath: '/games'
       preLoaderRoute: typeof GamesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/anotherPage': {
-      id: '/anotherPage'
-      path: '/anotherPage'
-      fullPath: '/anotherPage'
-      preLoaderRoute: typeof AnotherPageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analytics': {
@@ -122,7 +105,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
-  AnotherPageRoute: AnotherPageRoute,
   GamesRoute: GamesRoute,
   PlayRoute: PlayRoute,
 }

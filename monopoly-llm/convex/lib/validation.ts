@@ -1,14 +1,12 @@
-import { Id } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 import {
-  MORTGAGE_RATE,
   UNMORTGAGE_INTEREST,
-  MAX_HOUSES,
   HOTEL_LEVEL,
   JAIL_FINE,
 } from "./constants";
 import { getSpace, getHouseCost, getMortgageValue, isProperty } from "./board";
+import type { PropertyState } from "./rent";
 import {
-  PropertyState,
   hasMonopoly,
   getPropertiesInGroup,
   getMinHousesInGroup,

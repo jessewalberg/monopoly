@@ -32,7 +32,7 @@ export const getDecision = action({
     userPrompt: v.string(),
     temperature: v.optional(v.number()),
   },
-  handler: async (ctx, args): Promise<DecisionResult> => {
+  handler: async (_ctx, args): Promise<DecisionResult> => {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       throw new Error("OPENROUTER_API_KEY not configured");
@@ -166,7 +166,7 @@ export const testConnection = action({
   args: {
     modelId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       return { success: false, error: "OPENROUTER_API_KEY not configured" };

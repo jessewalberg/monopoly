@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   calculateRent,
-  calculatePropertyRent,
   calculateRailroadRent,
   calculateUtilityRent,
   hasMonopoly,
@@ -10,7 +9,7 @@ import {
   getMaxHousesInGroup,
   type PropertyState,
 } from "./rent";
-import { Id } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 
 // ============================================================
 // TEST HELPERS

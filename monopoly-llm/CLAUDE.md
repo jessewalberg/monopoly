@@ -103,19 +103,24 @@ OPENROUTER_API_KEY=      # Get from openrouter.ai
 ## Current Phase
 
 <!-- Update this as you progress -->
-Phase: 6 COMPLETE
+Phase: 7 COMPLETE
 Completed:
 - Phase 1: Project scaffolding (TanStack Start + Convex)
 - Phase 2: Database schema (10 tables)
 - Phase 3: Game constants (BOARD, cards, models)
 - Phase 4: Rent & Game Logic (rent, validation, cards, bankruptcy)
 - Phase 5: Basic Convex Functions (games, players, properties, turns, decisions)
-- Phase 6: OpenRouter Integration
-  - llmActions.ts: getDecision action with retry/timeout, testConnection
-  - prompts.ts: buildSystemPrompt, buildDecisionPrompt, serializeGameState
-  - parseResponse.ts: parseDecisionResponse, getFallbackDecision, parameter extraction
+- Phase 6: OpenRouter Integration (llmActions, prompts, parseResponse)
+- Phase 7: Game Engine
+  - startGame: initialize properties, set status, schedule first turn
+  - processTurnStep: main turn processor (pre_roll, rolling, post_roll, turn_end)
+  - Phase handlers: jail, dice rolling, movement, property purchase, rent, cards
+  - Internal helpers: rollDice, addTurnEvent, handleBankruptcy, handleGameEnd
+  - Controls: pauseGame, resumeGame, setSpeed, abandonGame, triggerNextStep
+  - Helper mutations: movePlayer, payRent, buyProperty, runAuction, buildHouse, mortgageProperty, unmortgageProperty, processBankruptcyMutation
+  - Scheduling: automatic turn progression via ctx.scheduler + scheduler.ts helper
 
-Working on: Phase 7
+Working on: Phase 8
 
 ## Implementation Notes
 

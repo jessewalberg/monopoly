@@ -1,15 +1,12 @@
-import { Id } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
+import { HOTEL_LEVEL } from "./constants";
 import {
-  MORTGAGE_RATE,
-  HOTEL_LEVEL,
-} from "./constants";
-import {
-  getSpace,
   getPurchasePrice,
   getMortgageValue,
   getHouseCost,
 } from "./board";
-import { PropertyState, getOwnedProperties } from "./rent";
+import type { PropertyState } from "./rent";
+import { getOwnedProperties } from "./rent";
 
 // ============================================================
 // TYPES

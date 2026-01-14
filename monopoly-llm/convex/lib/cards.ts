@@ -3,14 +3,16 @@ import {
   COMMUNITY_CHEST_CARDS,
   JAIL_POSITION,
   GO_SALARY,
-  PROPERTY_GROUPS,
-  HOTEL_LEVEL,
   type ChanceCard,
   type CommunityChestCard,
 } from "./constants";
+
+// Re-export for convenience
+export { CHANCE_CARDS, COMMUNITY_CHEST_CARDS };
 import { findNearestSpace, passedGo, calculateNewPosition } from "./board";
-import { Id } from "../_generated/dataModel";
-import { PropertyState, countPlayerBuildings } from "./rent";
+import type { Id } from "../_generated/dataModel";
+import type { PropertyState } from "./rent";
+import { countPlayerBuildings } from "./rent";
 
 // ============================================================
 // TYPES

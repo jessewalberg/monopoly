@@ -1,5 +1,4 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useMutation } from 'convex/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
 import { api } from '../../convex/_generated/api'
@@ -9,112 +8,90 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  const {
-    data: { viewer, numbers },
-  } = useSuspenseQuery(convexQuery(api.myFunctions.listNumbers, { count: 10 }))
-
-  const addNumber = useMutation(api.myFunctions.addNumber)
+  const { data: recentGames } = useSuspenseQuery(
+    convexQuery(api.games.list, { limit: 5 })
+  )
 
   return (
-    <main className="p-8 flex flex-col gap-16">
-      <h1 className="text-4xl font-bold text-center">
-        Convex + Tanstack Start
-      </h1>
-      <div className="flex flex-col gap-8 max-w-lg mx-auto">
-        <p>Welcome {viewer ?? 'Anonymous'}!</p>
-        <p>
-          Click the button below and open this page in another window - this
-          data is persisted in the Convex cloud database!
+    <main className="p-8 flex flex-col gap-16 min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white">
+      <div className="text-center">
+        <h1 className="text-5xl font-bold mb-4">LLM Monopoly Arena</h1>
+        <p className="text-xl text-slate-300">
+          Watch AI models compete in the classic game of Monopoly
         </p>
-        <p>
-          <button
-            className="bg-dark dark:bg-light text-light dark:text-dark text-sm px-4 py-2 rounded-md border-2"
-            onClick={() => {
-              void addNumber({ value: Math.floor(Math.random() * 10) })
-            }}
-          >
-            Add a random number
-          </button>
-        </p>
-        <p>
-          Numbers:{' '}
-          {numbers.length === 0 ? 'Click the button!' : numbers.join(', ')}
-        </p>
-        <p>
-          Edit{' '}
-          <code className="text-sm font-bold font-mono bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded-md">
-            convex/myFunctions.ts
-          </code>{' '}
-          to change your backend
-        </p>
-        <p>
-          Edit{' '}
-          <code className="text-sm font-bold font-mono bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded-md">
-            src/routes/index.tsx
-          </code>{' '}
-          to change your frontend
-        </p>
-        <p>
-          Open{' '}
+      </div>
+
+      <div className="flex flex-col gap-8 max-w-4xl mx-auto w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link
-            to="/anotherPage"
-            className="text-blue-600 underline hover:no-underline"
+            to="/play"
+            className="bg-green-600 hover:bg-green-700 text-white text-center py-6 px-8 rounded-lg font-bold text-xl transition-colors"
           >
-            another page
-          </Link>{' '}
-          to send an action.
-        </p>
-        <div className="flex flex-col">
-          <p className="text-lg font-bold">Useful resources:</p>
-          <div className="flex gap-2">
-            <div className="flex flex-col gap-2 w-1/2">
-              <ResourceCard
-                title="Convex docs"
-                description="Read comprehensive documentation for all Convex features."
-                href="https://docs.convex.dev/home"
-              />
-              <ResourceCard
-                title="Stack articles"
-                description="Learn about best practices, use cases, and more from a growing
-            collection of articles, videos, and walkthroughs."
-                href="https://www.typescriptlang.org/docs/handbook/2/basic-types.html"
-              />
+            New Game
+          </Link>
+          <Link
+            to="/games"
+            className="bg-blue-600 hover:bg-blue-700 text-white text-center py-6 px-8 rounded-lg font-bold text-xl transition-colors"
+          >
+            Game History
+          </Link>
+          <Link
+            to="/analytics"
+            className="bg-purple-600 hover:bg-purple-700 text-white text-center py-6 px-8 rounded-lg font-bold text-xl transition-colors"
+          >
+            Analytics
+          </Link>
+        </div>
+
+        <div className="bg-slate-800 rounded-lg p-6">
+          <h2 className="text-2xl font-bold mb-4">Recent Games</h2>
+          {recentGames.length === 0 ? (
+            <p className="text-slate-400">No games played yet. Start a new game!</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {recentGames.map((game) => (
+                <a
+                  key={game._id}
+                  href={`/play/${game._id}`}
+                  className="bg-slate-700 hover:bg-slate-600 p-4 rounded flex justify-between items-center transition-colors"
+                >
+                  <span>Game #{game._id.slice(-6)}</span>
+                  <span className={`px-2 py-1 rounded text-sm ${
+                    game.status === 'in_progress' ? 'bg-green-600' :
+                    game.status === 'completed' ? 'bg-blue-600' :
+                    game.status === 'setup' ? 'bg-yellow-600' :
+                    'bg-red-600'
+                  }`}>
+                    {game.status.replace('_', ' ')}
+                  </span>
+                </a>
+              ))}
             </div>
-            <div className="flex flex-col gap-2 w-1/2">
-              <ResourceCard
-                title="Templates"
-                description="Browse our collection of templates to get started quickly."
-                href="https://www.convex.dev/templates"
-              />
-              <ResourceCard
-                title="Discord"
-                description="Join our developer community to ask questions, trade tips & tricks,
-            and show off your projects."
-                href="https://www.convex.dev/community"
-              />
+          )}
+        </div>
+
+        <div className="bg-slate-800 rounded-lg p-6">
+          <h2 className="text-2xl font-bold mb-4">How It Works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-300">
+            <div>
+              <h3 className="font-bold text-white mb-2">1. Select AI Models</h3>
+              <p>Choose from Claude, GPT, Gemini, Llama, and more to compete.</p>
+            </div>
+            <div>
+              <h3 className="font-bold text-white mb-2">2. Watch the Game</h3>
+              <p>See real-time decisions as AI models play Monopoly.</p>
+            </div>
+            <div>
+              <h3 className="font-bold text-white mb-2">3. View Analytics</h3>
+              <p>Track win rates, head-to-head records, and strategy profiles.</p>
+            </div>
+            <div>
+              <h3 className="font-bold text-white mb-2">4. Replay Games</h3>
+              <p>Review past games turn-by-turn to understand AI decisions.</p>
             </div>
           </div>
         </div>
       </div>
     </main>
-  )
-}
-
-function ResourceCard({
-  title,
-  description,
-  href,
-}: {
-  title: string
-  description: string
-  href: string
-}) {
-  return (
-    <div className="flex flex-col gap-2 bg-slate-200 dark:bg-slate-800 p-4 rounded-md h-28 overflow-auto">
-      <a href={href} className="text-sm underline hover:no-underline">
-        {title}
-      </a>
-      <p className="text-xs">{description}</p>
-    </div>
   )
 }
