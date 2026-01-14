@@ -103,19 +103,20 @@ OPENROUTER_API_KEY=      # Get from openrouter.ai
 ## Current Phase
 
 <!-- Update this as you progress -->
-Phase: 4 COMPLETE
+Phase: 5 COMPLETE
 Completed:
 - Phase 1: Project scaffolding (TanStack Start + Convex)
 - Phase 2: Database schema (10 tables)
 - Phase 3: Game constants (BOARD, cards, models)
-- Phase 4: Rent & Game Logic
-  - Rent calculation (property, railroad, utility with monopoly/houses)
-  - Game validation (buy, build, mortgage, unmortgage, jail, trade)
-  - Card execution (Chance & Community Chest)
-  - Bankruptcy logic (net worth, liquidation, can afford)
-  - Rent tests (30 tests passing)
+- Phase 4: Rent & Game Logic (rent, validation, cards, bankruptcy)
+- Phase 5: Basic Convex Functions
+  - games.ts: list, get, getFullState, create, updateStatus, setWinner, updatePhase, advanceTurn
+  - players.ts: getByGame, get, getCurrent, create, updateCash, updatePosition, setJailStatus, setBankrupt, etc.
+  - properties.ts: getByGame, getByOwner, initializeForGame, setOwner, addHouse, removeHouse, setMortgaged, transfer
+  - turns.ts: getByGame, getLatest, create, setDiceRoll, setMovement, addEvent, complete
+  - decisions.ts: getByGame, getByPlayer, getByType, create, getPlayerStats
 
-Working on: Phase 5
+Working on: Phase 6
 
 ## Implementation Notes
 
