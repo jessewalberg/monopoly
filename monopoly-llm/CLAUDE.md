@@ -103,9 +103,19 @@ OPENROUTER_API_KEY=      # Get from openrouter.ai
 ## Current Phase
 
 <!-- Update this as you progress -->
-Phase: NOT STARTED
-Completed: None
-Working on: Phase 1 - Project Setup
+Phase: 4 COMPLETE
+Completed:
+- Phase 1: Project scaffolding (TanStack Start + Convex)
+- Phase 2: Database schema (10 tables)
+- Phase 3: Game constants (BOARD, cards, models)
+- Phase 4: Rent & Game Logic
+  - Rent calculation (property, railroad, utility with monopoly/houses)
+  - Game validation (buy, build, mortgage, unmortgage, jail, trade)
+  - Card execution (Chance & Community Chest)
+  - Bankruptcy logic (net worth, liquidation, can afford)
+  - Rent tests (30 tests passing)
+
+Working on: Phase 5
 
 ## Implementation Notes
 
@@ -156,6 +166,37 @@ const client = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
 });
+```
+
+### Between Sessions
+
+Keep track of:
+1. Which phases are complete
+2. Any bugs or issues found
+3. Any deviations from the plan
+
+### If Claude Code Gets Stuck
+
+Break down into smaller tasks:
+```
+Let's focus on just the rent calculation function.
+It needs to handle:
+1. Regular properties (base rent or monopoly doubled)
+2. Properties with houses (use rent array)
+3. Railroads (25/50/100/200)
+4. Utilities (4x or 10x dice)
+5. Mortgaged (return 0)
+
+Write this function with tests.
+```
+
+### Debugging Tips
+
+```
+The game is stuck on [X]. 
+Current game state: [paste from Convex dashboard]
+Error message: [if any]
+What's happening and how do we fix it?
 ```
 
 ## Known Issues / TODO
