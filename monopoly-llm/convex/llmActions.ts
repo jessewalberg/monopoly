@@ -200,3 +200,16 @@ export const testConnection = action({
     }
   },
 });
+
+// ============================================================
+// DECISION TYPES FOR GAME ENGINE
+// ============================================================
+
+export type DecisionType =
+  | "buy_property"
+  | "auction_bid"
+  | "jail_strategy"
+  | "pre_roll_actions"
+  | "post_roll_actions"
+  | "trade_response"
+  | "bankruptcy_resolution";

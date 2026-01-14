@@ -36,6 +36,27 @@ export default defineSchema({
       speedMs: v.number(),
       startingMoney: v.number(),
     }),
+    // Card decks - arrays of card indices representing remaining cards
+    // Cards are drawn from the front, when empty the deck is reshuffled
+    chanceDeck: v.optional(v.array(v.number())),
+    communityChestDeck: v.optional(v.array(v.number())),
+    // Pause state - separate from status since paused games are still "in_progress"
+    isPaused: v.optional(v.boolean()),
+    // LLM decision waiting state
+    waitingForLLM: v.optional(v.boolean()),
+    pendingDecision: v.optional(
+      v.object({
+        type: v.union(
+          v.literal("buy_property"),
+          v.literal("auction_bid"),
+          v.literal("jail_strategy"),
+          v.literal("pre_roll_actions"),
+          v.literal("post_roll_actions"),
+          v.literal("trade_response")
+        ),
+        context: v.string(), // JSON with decision context
+      })
+    ),
     createdAt: v.number(),
     startedAt: v.optional(v.number()),
     endedAt: v.optional(v.number()),

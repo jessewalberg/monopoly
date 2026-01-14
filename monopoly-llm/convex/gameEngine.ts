@@ -19,6 +19,22 @@ import {
 } from "./lib/cards";
 
 // ============================================================
+// HELPERS
+// ============================================================
+
+/**
+ * Fisher-Yates shuffle for card deck indices
+ */
+function shuffleDeckIndices(count: number): number[] {
+  const indices = Array.from({ length: count }, (_, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  return indices;
+}
+
+// ============================================================
 // GAME LIFECYCLE
 // ============================================================
 
@@ -75,6 +91,10 @@ export const startGame = mutation({
       startedAt: Date.now(),
     });
 
+    // Initialize shuffled card decks
+    const chanceDeck = shuffleDeckIndices(CHANCE_CARDS.length);
+    const communityChestDeck = shuffleDeckIndices(COMMUNITY_CHEST_CARDS.length);
+
     // Update game status
     await ctx.db.patch(args.gameId, {
       status: "in_progress",
@@ -82,6 +102,8 @@ export const startGame = mutation({
       currentPlayerIndex: 0,
       currentTurnNumber: 1,
       startedAt: Date.now(),
+      chanceDeck,
+      communityChestDeck,
     });
 
     // Schedule first turn processing
@@ -103,6 +125,12 @@ export const processTurnStep = internalMutation({
   handler: async (ctx, args) => {
     const game = await ctx.db.get(args.gameId);
     if (!game || game.status !== "in_progress") return;
+
+    // Don't process if game is paused
+    if (game.isPaused) return;
+
+    // Don't process if waiting for LLM decision
+    if (game.waitingForLLM) return;
 
     // Get all game data
     const players = await ctx.db
@@ -190,31 +218,38 @@ async function processPreRoll(
   _properties: any[],
   turn: any
 ) {
-  // Handle jail
+  // If player is in jail, ask LLM for jail strategy decision
   if (player.inJail) {
-    if (player.jailTurnsRemaining <= 0) {
-      // Force pay on 3rd turn
-      if (player.cash >= JAIL_FINE) {
-        await ctx.db.patch(player._id, {
-          cash: player.cash - JAIL_FINE,
-          inJail: false,
-          jailTurnsRemaining: 0,
-        });
-        await addTurnEvent(ctx, turn._id, `Forced to pay $${JAIL_FINE} jail fine`);
-      } else {
-        // Can't afford - will need to raise money or go bankrupt
-        await addTurnEvent(ctx, turn._id, "Cannot afford jail fine - must raise funds");
-      }
-    } else {
-      // Jail decision will be made in rolling phase
-      await ctx.db.patch(player._id, {
-        jailTurnsRemaining: player.jailTurnsRemaining - 1,
-      });
-    }
+    const canPayFine = player.cash >= JAIL_FINE;
+    const hasJailCard = player.getOutOfJailCards > 0;
+
+    const context = JSON.stringify({
+      canPayFine,
+      hasJailCard,
+      jailTurnsRemaining: player.jailTurnsRemaining,
+      playerCash: player.cash,
+    });
+
+    // Set waiting state and trigger LLM decision
+    await ctx.db.patch(game._id, {
+      waitingForLLM: true,
+      pendingDecision: { type: "jail_strategy", context },
+    });
+
+    // Call LLM for decision
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await ctx.scheduler.runAfter(0, (internal as any).llmDecisions.getLLMDecision, {
+      gameId: game._id,
+      playerId: player._id,
+      turnId: turn._id,
+      decisionType: "jail_strategy",
+      context,
+    });
+    return; // Don't continue - LLM will call back when done
   }
 
-  // For now, skip pre-roll actions and go to rolling
-  // Full LLM integration would call for build/mortgage/trade decisions here
+  // For non-jail turns, proceed directly to rolling
+  // TODO: Add pre_roll_actions LLM call here for build/mortgage/trade decisions
   await ctx.db.patch(game._id, { currentPhase: "rolling" });
 }
 
@@ -239,7 +274,7 @@ async function processRolling(
       await ctx.db.patch(player._id, {
         inJail: false,
         jailTurnsRemaining: 0,
-        consecutiveDoubles: 0,
+        consecutiveDoubles: 1, // Rolling doubles to exit jail counts as first consecutive double
       });
       await addTurnEvent(ctx, turn._id, `Rolled doubles (${d1},${d2}) - out of jail!`);
 
@@ -264,10 +299,42 @@ async function processRolling(
       }
       await addTurnEvent(ctx, turn._id, `Moved to ${getSpace(newPosition).name}`);
     } else {
-      await addTurnEvent(ctx, turn._id, `Rolled (${d1},${d2}) - still in jail`);
-      // Skip to turn end
-      await ctx.db.patch(game._id, { currentPhase: "turn_end" });
-      return;
+      // Failed to roll doubles - decrement jail turns
+      const newJailTurns = player.jailTurnsRemaining - 1;
+
+      if (newJailTurns <= 0) {
+        // 3rd failed attempt - must pay fine to get out
+        await addTurnEvent(ctx, turn._id, `Rolled (${d1},${d2}) - 3rd failed attempt, must pay fine`);
+
+        if (player.cash >= JAIL_FINE) {
+          await ctx.db.patch(player._id, {
+            cash: player.cash - JAIL_FINE,
+            inJail: false,
+            jailTurnsRemaining: 0,
+          });
+          await addTurnEvent(ctx, turn._id, `Paid $${JAIL_FINE} jail fine - now free`);
+
+          // Player is free but doesn't move this turn (per official rules)
+          await ctx.db.patch(game._id, { currentPhase: "turn_end" });
+          return;
+        } else {
+          // Can't afford fine - bankruptcy (owed to the bank)
+          await addTurnEvent(ctx, turn._id, `Cannot afford $${JAIL_FINE} jail fine - BANKRUPT!`);
+          const properties = await ctx.db
+            .query("properties")
+            .withIndex("by_game", (q: any) => q.eq("gameId", game._id))
+            .collect();
+          await handleBankruptcy(ctx, game._id, player._id, undefined, properties);
+          await ctx.db.patch(game._id, { currentPhase: "turn_end" });
+          return;
+        }
+      } else {
+        // Still have attempts remaining
+        await ctx.db.patch(player._id, { jailTurnsRemaining: newJailTurns });
+        await addTurnEvent(ctx, turn._id, `Rolled (${d1},${d2}) - still in jail (${newJailTurns} attempts remaining)`);
+        await ctx.db.patch(game._id, { currentPhase: "turn_end" });
+        return;
+      }
     }
   } else {
     // Normal roll
@@ -349,16 +416,35 @@ async function processPostRoll(
       if (!property) break;
 
       if (!property.ownerId) {
-        // Unowned - player can buy
-        const cost = space.type === "property" ? space.cost : space.cost;
-        if (player.cash >= cost) {
-          // Auto-buy for now (full implementation would use LLM decision)
-          await ctx.db.patch(property._id, { ownerId: player._id });
-          await ctx.db.patch(player._id, { cash: player.cash - cost });
-          await addTurnEvent(ctx, turn._id, `Bought ${space.name} for $${cost}`);
-        } else {
-          await addTurnEvent(ctx, turn._id, `Cannot afford ${space.name} ($${cost})`);
-        }
+        // Unowned - player can buy or auction
+        const cost = (space as any).cost || 0;
+
+        // Ask LLM for buy/auction decision
+        const context = JSON.stringify({
+          propertyPosition: property.position,
+          propertyName: space.name,
+          propertyCost: cost,
+          propertyGroup: property.group,
+          playerCash: player.cash,
+          canAfford: player.cash >= cost,
+        });
+
+        // Set waiting state and trigger LLM decision
+        await ctx.db.patch(game._id, {
+          waitingForLLM: true,
+          pendingDecision: { type: "buy_property", context },
+        });
+
+        // Call LLM for decision
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await ctx.scheduler.runAfter(0, (internal as any).llmDecisions.getLLMDecision, {
+          gameId: game._id,
+          playerId: player._id,
+          turnId: turn._id,
+          decisionType: "buy_property",
+          context,
+        });
+        return; // Don't continue - LLM will call back when done
       } else if (property.ownerId !== player._id && !property.isMortgaged) {
         // Pay rent
         const owner = allPlayers.find((p) => p._id === property.ownerId);
@@ -385,8 +471,8 @@ async function processPostRoll(
               receiverCashAfter: owner.cash + actualPayment,
             });
 
-            // Check bankruptcy
-            if (player.cash - actualPayment < 0) {
+            // Check bankruptcy - player couldn't afford full rent
+            if (player.cash < rent) {
               await handleBankruptcy(ctx, game._id, player._id, owner._id, properties);
             }
           }
@@ -409,11 +495,30 @@ async function processPostRoll(
 
     case "chance":
     case "community_chest": {
-      // Draw and execute card
-      const cards = space.type === "chance" ? [...CHANCE_CARDS] : [...COMMUNITY_CHEST_CARDS];
-      const card = cards[Math.floor(Math.random() * cards.length)];
+      // Draw card from deck (proper Monopoly rules - draw in order, reshuffle when empty)
+      const isChance = space.type === "chance";
+      const cards = isChance ? CHANCE_CARDS : COMMUNITY_CHEST_CARDS;
+      let deck = isChance ? (game.chanceDeck ?? []) : (game.communityChestDeck ?? []);
 
-      await addTurnEvent(ctx, turn._id, `Drew ${space.type === "chance" ? "Chance" : "Community Chest"}: "${card.text}"`);
+      // Reshuffle if deck is empty
+      if (deck.length === 0) {
+        deck = shuffleDeckIndices(cards.length);
+        await addTurnEvent(ctx, turn._id, `${isChance ? "Chance" : "Community Chest"} deck reshuffled`);
+      }
+
+      // Draw from front of deck
+      const cardIndex = deck[0];
+      const remainingDeck = deck.slice(1);
+      const card = cards[cardIndex];
+
+      // Update deck in game state
+      if (isChance) {
+        await ctx.db.patch(game._id, { chanceDeck: remainingDeck });
+      } else {
+        await ctx.db.patch(game._id, { communityChestDeck: remainingDeck });
+      }
+
+      await addTurnEvent(ctx, turn._id, `Drew ${isChance ? "Chance" : "Community Chest"}: "${card.text}"`);
 
       // Execute card effects
       const playerState = { _id: player._id, cash: player.cash, position: player.position };
@@ -458,6 +563,48 @@ async function processPostRoll(
 
         if (result.passedGo) {
           await addTurnEvent(ctx, turn._id, `Passed GO - collected $${GO_SALARY}`);
+        }
+
+        // Check if card moved player to owned property - charge rent with special rules
+        if (result.newPosition !== undefined && !result.goToJail) {
+          const landedSpace = getSpace(result.newPosition);
+          if (landedSpace.type === "property" || landedSpace.type === "railroad" || landedSpace.type === "utility") {
+            const landedProperty = properties.find((p) => p.position === result.newPosition);
+            if (landedProperty && landedProperty.ownerId && landedProperty.ownerId !== player._id && !landedProperty.isMortgaged) {
+              const owner = allPlayers.find((p) => p._id === landedProperty.ownerId);
+              if (owner && !owner.isBankrupt) {
+                const diceTotal = turn.diceRoll ? turn.diceRoll[0] + turn.diceRoll[1] : 7;
+                let rent = calculateRent(landedProperty, properties, landedProperty.ownerId, diceTotal);
+
+                // Apply special card rent rules
+                if (result.doubleRent && landedSpace.type === "railroad") {
+                  rent = rent * 2;
+                  await addTurnEvent(ctx, turn._id, `Card doubles railroad rent!`);
+                }
+                if (result.useMultiplierTen && landedSpace.type === "utility") {
+                  // Use 10x multiplier regardless of how many utilities owned
+                  rent = diceTotal * 10;
+                  await addTurnEvent(ctx, turn._id, `Card applies 10x utility multiplier!`);
+                }
+
+                if (rent > 0) {
+                  // Refetch player for current cash after GO salary
+                  const currentPlayer = await ctx.db.get(player._id);
+                  const currentCash = currentPlayer?.cash ?? updatedCash;
+                  const actualPayment = Math.min(rent, currentCash);
+
+                  await ctx.db.patch(player._id, { cash: currentCash - actualPayment });
+                  await ctx.db.patch(owner._id, { cash: owner.cash + actualPayment });
+                  await addTurnEvent(ctx, turn._id, `Paid $${actualPayment} rent to ${owner.modelDisplayName}`);
+
+                  // Check bankruptcy
+                  if (currentCash < rent) {
+                    await handleBankruptcy(ctx, game._id, player._id, owner._id, properties);
+                  }
+                }
+              }
+            }
+          }
         }
       }
 
@@ -562,9 +709,29 @@ async function processTurnEnd(
     return;
   }
 
-  // Advance to next player
-  const nextPlayerIndex = (game.currentPlayerIndex + 1) % activePlayers.length;
-  const nextPlayer = activePlayers[nextPlayerIndex];
+  // Advance to next player using turnOrder (handles bankruptcy correctly)
+  // Find next player by turnOrder, wrapping around if needed
+  const currentTurnOrder = player.turnOrder;
+  const totalPlayers = (await ctx.db
+    .query("players")
+    .withIndex("by_game", (q: any) => q.eq("gameId", game._id))
+    .collect()).length;
+
+  // Find next active player by turnOrder
+  let nextPlayer = null;
+  for (let offset = 1; offset <= totalPlayers; offset++) {
+    const nextTurnOrder = (currentTurnOrder + offset) % totalPlayers;
+    nextPlayer = activePlayers.find((p) => p.turnOrder === nextTurnOrder);
+    if (nextPlayer) break;
+  }
+
+  if (!nextPlayer) {
+    // Fallback to first active player
+    nextPlayer = activePlayers[0];
+  }
+
+  // Find index of next player in sorted activePlayers array
+  const nextPlayerIndex = activePlayers.findIndex((p) => p._id === nextPlayer!._id);
 
   // Create new turn
   await ctx.db.insert("turns", {
@@ -663,6 +830,11 @@ async function handleGameEnd(
     currentPhase: "game_over",
     endedAt: Date.now(),
   });
+
+  // Update analytics stats
+  await ctx.scheduler.runAfter(0, internal.statsAggregator.updateStatsAfterGame, {
+    gameId,
+  });
 }
 
 // ============================================================
@@ -680,9 +852,10 @@ export const pauseGame = mutation({
     const game = await ctx.db.get(args.gameId);
     if (!game) throw new Error("Game not found");
     if (game.status !== "in_progress") throw new Error("Game is not in progress");
+    if (game.isPaused) throw new Error("Game is already paused");
 
     await ctx.db.patch(args.gameId, {
-      status: "setup", // Use setup as "paused" state
+      isPaused: true,
     });
   },
 });
@@ -697,9 +870,11 @@ export const resumeGame = mutation({
   handler: async (ctx, args) => {
     const game = await ctx.db.get(args.gameId);
     if (!game) throw new Error("Game not found");
+    if (game.status !== "in_progress") throw new Error("Game is not in progress");
+    if (!game.isPaused) throw new Error("Game is not paused");
 
     await ctx.db.patch(args.gameId, {
-      status: "in_progress",
+      isPaused: false,
     });
 
     // Schedule next turn
@@ -743,6 +918,11 @@ export const abandonGame = mutation({
       endingReason: "manual_stop",
       currentPhase: "game_over",
       endedAt: Date.now(),
+    });
+
+    // Still update stats for abandoned games (partial data is better than none)
+    await ctx.scheduler.runAfter(0, internal.statsAggregator.updateStatsAfterGame, {
+      gameId: args.gameId,
     });
   },
 });
@@ -893,6 +1073,62 @@ export const buyProperty = mutation({
     return { propertyName: property.name, cost };
   },
 });
+
+/**
+ * Run an automated auction during turn processing
+ * Uses simple bidding strategy until LLM integration is complete
+ */
+async function runAutomatedAuction(
+  ctx: any,
+  gameId: Id<"games">,
+  propertyId: Id<"properties">,
+  turnId: Id<"turns">,
+  allPlayers: Array<{ _id: Id<"players">; cash: number; isBankrupt: boolean; modelDisplayName: string }>,
+  propertyCost: number,
+  propertyName: string
+): Promise<{ winnerId: Id<"players"> | null; winningBid: number }> {
+  // Collect bids from all active players
+  // Simple strategy: bid up to 50% of cash if it's below property cost, otherwise 0
+  // TODO: Replace with LLM decisions when Issue #1 is resolved
+  const bids: Array<{ playerId: Id<"players">; amount: number }> = [];
+
+  for (const player of allPlayers) {
+    if (player.isBankrupt) continue;
+
+    // Simple automated bid strategy
+    const maxBid = Math.floor(player.cash * 0.5);
+    const bid = maxBid >= 1 ? Math.min(maxBid, propertyCost - 1) : 0;
+
+    if (bid > 0) {
+      bids.push({ playerId: player._id, amount: bid });
+    }
+  }
+
+  // Find highest valid bid
+  let highestBid = 0;
+  let winnerId: Id<"players"> | null = null;
+
+  for (const bid of bids) {
+    const player = allPlayers.find(p => p._id === bid.playerId);
+    if (player && !player.isBankrupt && bid.amount > highestBid && bid.amount <= player.cash) {
+      highestBid = bid.amount;
+      winnerId = bid.playerId;
+    }
+  }
+
+  if (winnerId && highestBid > 0) {
+    const winner = allPlayers.find(p => p._id === winnerId);
+    if (winner) {
+      await ctx.db.patch(propertyId, { ownerId: winnerId });
+      await ctx.db.patch(winnerId, { cash: winner.cash - highestBid });
+      await addTurnEvent(ctx, turnId, `Auction: ${winner.modelDisplayName} won ${propertyName} for $${highestBid}`);
+    }
+  } else {
+    await addTurnEvent(ctx, turnId, `Auction: No valid bids for ${propertyName} - property remains unowned`);
+  }
+
+  return { winnerId, winningBid: highestBid };
+}
 
 /**
  * Run a simplified auction for a property
