@@ -24,10 +24,9 @@ export interface ModelSelectorProps {
 // ============================================================
 
 const tierBadgeVariant: Record<ModelTier, "success" | "info" | "warning" | "neutral"> = {
-  flagship: "success",
-  standard: "info",
-  fast: "warning",
-  free: "neutral",
+  budget: "success",    // Green - cheapest, recommended
+  standard: "info",     // Blue - balanced
+  premium: "warning",   // Yellow - expensive
 };
 
 // ============================================================
@@ -85,6 +84,11 @@ export function ModelInfoCard({ model }: { model: LLMModel }) {
       {model.description && (
         <p className="text-sm text-slate-300">{model.description}</p>
       )}
+      {model.costPerMillion && (
+        <p className="text-xs text-slate-500">
+          ~${model.costPerMillion.input}/${model.costPerMillion.output} per 1M tokens (in/out)
+        </p>
+      )}
     </div>
   );
 }
@@ -136,24 +140,29 @@ export function ModelGridSelector({
 
   // Group by tier
   const byTier: Record<ModelTier, LLMModel[]> = {
-    free: [],
-    flagship: [],
+    budget: [],
     standard: [],
-    fast: [],
+    premium: [],
   };
 
   for (const model of availableModels) {
     byTier[model.tier].push(model);
   }
 
+  const tierLabels: Record<ModelTier, string> = {
+    budget: "Budget (Recommended)",
+    standard: "Standard",
+    premium: "Premium",
+  };
+
   return (
     <div className="space-y-4">
-      {(["free", "flagship", "standard", "fast"] as ModelTier[]).map(
+      {(["budget", "standard", "premium"] as ModelTier[]).map(
         (tier) =>
           byTier[tier].length > 0 && (
             <div key={tier}>
               <h4 className="text-sm font-medium text-slate-400 uppercase tracking-wide mb-2">
-                {tier} Models
+                {tierLabels[tier]}
               </h4>
               <div className="grid grid-cols-2 gap-2">
                 {byTier[tier].map((model) => (

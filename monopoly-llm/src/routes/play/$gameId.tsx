@@ -158,7 +158,8 @@ function LiveGamePage() {
   }));
 
   // Transform turns for ActionLog using the helper
-  const logEvents = recentTurns.flatMap((turn) => {
+  // Reverse turns so oldest appears first (chronological order)
+  const logEvents = [...recentTurns].reverse().flatMap((turn) => {
     const player = players.find((p) => p._id === turn.playerId);
     return parseTurnEvents(
       turn.events,
@@ -166,7 +167,7 @@ function LiveGamePage() {
       player?.tokenColor,
       turn.startedAt
     );
-  }).slice(0, 50);
+  }).slice(-50); // Take the last 50 events (most recent)
 
   const isPaused = game.isPaused === true;
 

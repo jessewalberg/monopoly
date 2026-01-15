@@ -17,6 +17,12 @@ import {
   CHANCE_CARDS,
   COMMUNITY_CHEST_CARDS,
 } from "./lib/cards";
+import {
+  canBuildAny,
+  canMortgageAny,
+  canUnmortgageAny,
+  type PlayerState,
+} from "./lib/validation";
 
 // ============================================================
 // HELPERS
@@ -215,7 +221,7 @@ async function processPreRoll(
   game: any,
   player: any,
   _allPlayers: any[],
-  _properties: any[],
+  properties: any[],
   turn: any
 ) {
   // If player is in jail, ask LLM for jail strategy decision
@@ -248,10 +254,29 @@ async function processPreRoll(
     return; // Don't continue - LLM will call back when done
   }
 
+  // Build player state for validation checks
+  const playerState: PlayerState = {
+    _id: player._id,
+    cash: player.cash,
+    position: player.position,
+    inJail: player.inJail,
+    jailTurnsRemaining: player.jailTurnsRemaining,
+    getOutOfJailCards: player.getOutOfJailCards,
+    isBankrupt: player.isBankrupt,
+  };
+
+  // Check what actions are actually available for this player
+  const canBuild = canBuildAny(playerState, properties);
+  const canMortgageProps = canMortgageAny(playerState, properties);
+  const canUnmortgageProps = canUnmortgageAny(playerState, properties);
+
   // For non-jail turns, ask LLM for pre-roll actions
   const context = JSON.stringify({
     phase: "pre_roll",
     playerCash: player.cash,
+    canBuild,
+    canMortgage: canMortgageProps,
+    canUnmortgage: canUnmortgageProps,
   });
 
   await ctx.db.patch(game._id, {
@@ -805,9 +830,28 @@ async function processPostRoll(
     return;
   }
 
+  // Build player state for validation checks
+  const playerState: PlayerState = {
+    _id: player._id,
+    cash: playerData?.cash ?? player.cash,
+    position: playerData?.position ?? player.position,
+    inJail: playerData?.inJail ?? player.inJail,
+    jailTurnsRemaining: playerData?.jailTurnsRemaining ?? player.jailTurnsRemaining,
+    getOutOfJailCards: playerData?.getOutOfJailCards ?? player.getOutOfJailCards,
+    isBankrupt: playerData?.isBankrupt ?? player.isBankrupt,
+  };
+
+  // Check what actions are actually available for this player
+  const canBuild = canBuildAny(playerState, properties);
+  const canMortgageProps = canMortgageAny(playerState, properties);
+  const canUnmortgageProps = canUnmortgageAny(playerState, properties);
+
   const context = JSON.stringify({
     phase: "post_roll",
     playerCash: playerData?.cash ?? player.cash,
+    canBuild,
+    canMortgage: canMortgageProps,
+    canUnmortgage: canUnmortgageProps,
   });
 
   await ctx.db.patch(game._id, {

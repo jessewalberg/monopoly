@@ -78,25 +78,10 @@ export const getLLMDecision = internalAction({
     ]);
 
     if (!game || !player || !turn) {
-      console.error("Missing game data for LLM decision");
-      // Fall back to default action
-      const fallback = getFallbackDecision(args.decisionType, validActions);
-      await ctx.runMutation(internal.llmDecisionExecutors.processDecisionResult, {
-        gameId: args.gameId,
-        playerId: args.playerId,
-        turnId: args.turnId,
-        turnNumber: game?.currentTurnNumber ?? 1,
-        decisionType: args.decisionType,
-        action: fallback.action,
-        parameters: fallback.parameters,
-        reasoning: "Failed to fetch game data - using fallback",
-        promptTokens: 0,
-        completionTokens: 0,
-        latencyMs: Date.now() - startTime,
-        rawResponse: "",
-        context: args.context,
-      });
-      return;
+      // This is a critical error - game data should always exist
+      const errorMsg = `Missing game data for LLM decision: game=${!!game}, player=${!!player}, turn=${!!turn}`;
+      console.error(`[CRITICAL] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
     // Get all players and properties
@@ -157,24 +142,10 @@ export const getLLMDecision = internalAction({
     // Call OpenRouter
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      console.error("OPENROUTER_API_KEY not configured");
-      const fallback = getFallbackDecision(args.decisionType, validActions);
-      await ctx.runMutation(internal.llmDecisionExecutors.processDecisionResult, {
-        gameId: args.gameId,
-        playerId: args.playerId,
-        turnId: args.turnId,
-        turnNumber: game.currentTurnNumber,
-        decisionType: args.decisionType,
-        action: fallback.action,
-        parameters: fallback.parameters,
-        reasoning: "API key not configured - using fallback",
-        promptTokens: 0,
-        completionTokens: 0,
-        latencyMs: Date.now() - startTime,
-        rawResponse: "",
-        context: args.context,
-      });
-      return;
+      // This is a configuration error - should be fixed before running games
+      const errorMsg = "OPENROUTER_API_KEY not configured in Convex Dashboard environment variables";
+      console.error(`[CRITICAL] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
     const client = new OpenAI({
@@ -211,24 +182,11 @@ export const getLLMDecision = internalAction({
       promptTokens = response.usage?.prompt_tokens || 0;
       completionTokens = response.usage?.completion_tokens || 0;
     } catch (error) {
-      console.error("LLM call failed:", error);
-      const fallback = getFallbackDecision(args.decisionType, validActions);
-      await ctx.runMutation(internal.llmDecisionExecutors.processDecisionResult, {
-        gameId: args.gameId,
-        playerId: args.playerId,
-        turnId: args.turnId,
-        turnNumber: game.currentTurnNumber,
-        decisionType: args.decisionType,
-        action: fallback.action,
-        parameters: fallback.parameters,
-        reasoning: `LLM error: ${(error as Error).message} - using fallback`,
-        promptTokens: 0,
-        completionTokens: 0,
-        latencyMs: Date.now() - startTime,
-        rawResponse: "",
-        context: args.context,
-      });
-      return;
+      // LLM API call failed - throw error so it can be debugged
+      const errorMsg = `LLM API call failed for ${args.decisionType}: ${(error as Error).message}`;
+      console.error(`[LLM_ERROR] ${errorMsg}`);
+      console.error(`[LLM_ERROR] Model: ${player.modelId}, Player: ${player.modelDisplayName}`);
+      throw new Error(errorMsg);
     }
 
     const latencyMs = Date.now() - startTime;
@@ -238,12 +196,14 @@ export const getLLMDecision = internalAction({
       parsed = { ...parsed, parameters: { ...parsed.parameters, amount } };
     }
 
-    let decision = parsed ?? getFallbackDecision(args.decisionType, validActions);
+    // Use fallback only when parsing fails - pass rawResponse for debugging
+    let decision = parsed ?? getFallbackDecision(args.decisionType, validActions, rawResponse);
 
     if (parsed) {
       const validation = validateDecision(parsed, args.decisionType);
       if (!validation.valid) {
-        decision = getFallbackDecision(args.decisionType, validActions);
+        console.error(`[LLM_VALIDATION] Decision validation failed: ${validation.error}`);
+        decision = getFallbackDecision(args.decisionType, validActions, rawResponse);
       }
     }
     if (args.decisionType === "auction_bid") {
@@ -288,10 +248,24 @@ function getValidActions(
       if (context.hasJailCard) actions.push("use_card");
       return actions;
     }
-    case "pre_roll_actions":
-      return ["build", "mortgage", "unmortgage", "trade", "done"];
-    case "post_roll_actions":
-      return ["build", "mortgage", "unmortgage", "done"];
+    case "pre_roll_actions": {
+      // Only include actions that are actually possible
+      const actions: string[] = [];
+      if (context.canBuild) actions.push("build");
+      if (context.canMortgage) actions.push("mortgage");
+      if (context.canUnmortgage) actions.push("unmortgage");
+      actions.push("trade", "done");
+      return actions;
+    }
+    case "post_roll_actions": {
+      // Only include actions that are actually possible
+      const actions: string[] = [];
+      if (context.canBuild) actions.push("build");
+      if (context.canMortgage) actions.push("mortgage");
+      if (context.canUnmortgage) actions.push("unmortgage");
+      actions.push("done");
+      return actions;
+    }
     case "trade_response":
       return ["accept", "reject", "counter"];
     default:

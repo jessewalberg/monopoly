@@ -58,16 +58,20 @@ function getGridPosition(pos: number): { row: number; col: number; side: BoardSi
     return { row: 1, col: 11, side: "corner" };
   } else if (pos >= 1 && pos <= 9) {
     // Bottom row: right to left (GO is at right)
+    // pos 1 → col 10, pos 9 → col 2
     return { row: 11, col: 11 - pos, side: "bottom" };
   } else if (pos >= 11 && pos <= 19) {
-    // Left side: top to bottom
-    return { row: pos - 9, col: 1, side: "left" };
+    // Left side: going UP from Jail (row 11) to Free Parking (row 1)
+    // pos 11 → row 10, pos 19 → row 2
+    return { row: 21 - pos, col: 1, side: "left" };
   } else if (pos >= 21 && pos <= 29) {
     // Top row: left to right
+    // pos 21 → col 2, pos 29 → col 10
     return { row: 1, col: pos - 19, side: "top" };
   } else {
-    // Right side: bottom to top (31-39)
-    return { row: 41 - pos, col: 11, side: "right" };
+    // Right side (31-39): going DOWN from Go To Jail (row 1) to GO (row 11)
+    // pos 31 → row 2, pos 39 → row 10
+    return { row: pos - 29, col: 11, side: "right" };
   }
 }
 
@@ -103,8 +107,9 @@ export function Board({
   // Get property state by position with owner colors
   const propertyMap = new Map(
     properties.map((p) => {
+      // Compare IDs as strings since Convex Id objects don't compare equal via ===
       const ownerColor = p.ownerId
-        ? players.find((pl) => pl._id === p.ownerId)?.tokenColor
+        ? players.find((pl) => String(pl._id) === String(p.ownerId))?.tokenColor
         : undefined;
       return [p.position, { ...p, ownerColor }];
     })

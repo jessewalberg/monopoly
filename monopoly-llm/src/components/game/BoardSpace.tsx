@@ -41,6 +41,25 @@ function getColorBandPosition(side: BoardSide): string {
   }
 }
 
+function getOwnerIndicatorPosition(side: BoardSide): string {
+  // Position owner indicator on the INNER edge (opposite of color band)
+  switch (side) {
+    case "top":
+      // Color band at bottom, so owner indicator goes top-left
+      return "top-0.5 left-0.5";
+    case "left":
+      // Color band at right, so owner indicator goes bottom-left
+      return "bottom-0.5 left-0.5";
+    case "right":
+      // Color band at left, so owner indicator goes bottom-right
+      return "bottom-0.5 right-0.5";
+    case "bottom":
+    default:
+      // Color band at top, so owner indicator goes bottom-left
+      return "bottom-0.5 left-0.5";
+  }
+}
+
 // ============================================================
 // HOUSE INDICATOR
 // ============================================================
@@ -131,10 +150,10 @@ function PropertySpaceContent({
         )}
       </div>
 
-      {/* Owner indicator */}
+      {/* Owner indicator - positioned on inner edge based on side */}
       {isOwned && ownerColor && (
         <div
-          className="absolute bottom-0.5 left-0.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm z-10"
+          className={`absolute ${getOwnerIndicatorPosition(side)} w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm z-10`}
           style={{ backgroundColor: ownerColor }}
         />
       )}
@@ -176,7 +195,7 @@ function RailroadSpaceContent({
       </div>
       {isOwned && ownerColor && (
         <div
-          className="absolute bottom-0.5 left-0.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm z-10"
+          className={`absolute ${getOwnerIndicatorPosition(side)} w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm z-10`}
           style={{ backgroundColor: ownerColor }}
         />
       )}
@@ -227,7 +246,7 @@ function UtilitySpaceContent({
       </div>
       {isOwned && ownerColor && (
         <div
-          className="absolute bottom-0.5 left-0.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm z-10"
+          className={`absolute ${getOwnerIndicatorPosition(side)} w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm z-10`}
           style={{ backgroundColor: ownerColor }}
         />
       )}

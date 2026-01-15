@@ -124,11 +124,19 @@ function findCloseMatch(action: string, validActions: string[]): string | null {
 
 /**
  * Get a safe fallback decision when LLM response is invalid
+ * This should only be used when parsing fails - throws error for debugging in dev
  */
 export function getFallbackDecision(
   decisionType: DecisionType,
-  validActions: string[]
+  validActions: string[],
+  rawResponse?: string
 ): ParsedDecision {
+  // Log the error for debugging - this helps identify why LLM responses fail
+  console.error(`[LLM_FALLBACK] Decision type: ${decisionType}, Valid actions: ${validActions.join(", ")}`);
+  if (rawResponse) {
+    console.error(`[LLM_FALLBACK] Raw response that failed to parse: ${rawResponse.slice(0, 500)}`);
+  }
+
   const fallbacks: Record<DecisionType, ParsedDecision> = {
     buy_property: {
       action: "auction",

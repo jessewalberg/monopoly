@@ -78,14 +78,17 @@ export function ActionLog({
   }, [events, autoScroll]);
 
   return (
-    <Card>
-      <CardHeader className="py-2">
-        <h3 className="text-sm font-semibold text-white">Action Log</h3>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="py-2 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-white">Action Log</h3>
+          <span className="text-xs text-slate-500">{events.length} events</span>
+        </div>
       </CardHeader>
-      <CardBody className="p-0">
+      <CardBody className="p-0 flex-1 min-h-0">
         <div
           ref={scrollRef}
-          className="overflow-y-auto p-2 space-y-1"
+          className="overflow-y-auto h-full p-2 space-y-1.5"
           style={{ maxHeight }}
         >
           {events.length === 0 ? (
@@ -138,25 +141,25 @@ function ActionEventRow({
       `}
     >
       <span className="text-sm flex-shrink-0">{config.icon}</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          {event.playerName && (
-            <span
-              className="text-xs font-medium px-1.5 rounded"
-              style={{
-                backgroundColor: event.playerColor || "#666",
-                color: "#fff",
-              }}
-            >
-              {event.playerName}
-            </span>
-          )}
-          <span className={`text-sm ${config.textColor}`}>
-            {event.message}
+      <div className="flex-1 min-w-0 overflow-hidden">
+        {/* Player name on its own line if present */}
+        {event.playerName && (
+          <span
+            className="inline-block text-xs font-medium px-1.5 rounded mb-0.5"
+            style={{
+              backgroundColor: event.playerColor || "#666",
+              color: "#fff",
+            }}
+          >
+            {event.playerName}
           </span>
-        </div>
+        )}
+        {/* Message text - wraps properly */}
+        <p className={`text-sm ${config.textColor} break-words leading-snug`}>
+          {event.message}
+        </p>
         {event.details && (
-          <p className="text-xs text-slate-500 mt-0.5">{event.details}</p>
+          <p className="text-xs text-slate-500 mt-0.5 break-words">{event.details}</p>
         )}
       </div>
       {showTimestamp && (

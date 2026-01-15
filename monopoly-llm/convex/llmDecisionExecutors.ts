@@ -571,6 +571,15 @@ async function executePrePostRollHandler(
       parameters: args.parameters,
     });
     await addEvent(result.message);
+    // If build failed, end the turn to prevent infinite retry loops
+    if (result.message.startsWith("Build failed")) {
+      const turn = await ctx.db.get(args.turnId);
+      if (turn?.wasDoubles && !player.inJail) {
+        nextPhase = "rolling";
+      } else {
+        nextPhase = "turn_end";
+      }
+    }
   } else if (args.action === "mortgage") {
     const result = await applyMortgageAction(ctx, {
       gameId: args.gameId,
@@ -579,6 +588,15 @@ async function executePrePostRollHandler(
       parameters: args.parameters,
     });
     await addEvent(result.message);
+    // If mortgage failed, end the turn to prevent infinite retry loops
+    if (result.message.startsWith("Mortgage failed")) {
+      const turn = await ctx.db.get(args.turnId);
+      if (turn?.wasDoubles && !player.inJail) {
+        nextPhase = "rolling";
+      } else {
+        nextPhase = "turn_end";
+      }
+    }
   } else if (args.action === "unmortgage") {
     const result = await applyUnmortgageAction(ctx, {
       gameId: args.gameId,
@@ -587,6 +605,15 @@ async function executePrePostRollHandler(
       parameters: args.parameters,
     });
     await addEvent(result.message);
+    // If unmortgage failed, end the turn to prevent infinite retry loops
+    if (result.message.startsWith("Unmortgage failed")) {
+      const turn = await ctx.db.get(args.turnId);
+      if (turn?.wasDoubles && !player.inJail) {
+        nextPhase = "rolling";
+      } else {
+        nextPhase = "turn_end";
+      }
+    }
   } else if (args.action === "trade") {
     const tradeStarted = await applyTradeAction(ctx, {
       gameId: args.gameId,

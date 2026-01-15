@@ -409,6 +409,44 @@ function addMortgageActions(
 }
 
 // ============================================================
+// QUICK CHECKS FOR AVAILABLE ACTIONS
+// These return true if the player has at least one valid action of this type
+// ============================================================
+
+/**
+ * Check if player can build on ANY of their properties
+ */
+export function canBuildAny(
+  player: PlayerState,
+  allProperties: PropertyState[]
+): boolean {
+  const ownedProperties = getOwnedProperties(player._id, allProperties);
+  return ownedProperties.some((prop) => canBuildHouse(player, prop, allProperties).valid);
+}
+
+/**
+ * Check if player can mortgage ANY of their properties
+ */
+export function canMortgageAny(
+  player: PlayerState,
+  allProperties: PropertyState[]
+): boolean {
+  const ownedProperties = getOwnedProperties(player._id, allProperties);
+  return ownedProperties.some((prop) => canMortgage(player, prop, allProperties).valid);
+}
+
+/**
+ * Check if player can unmortgage ANY of their properties
+ */
+export function canUnmortgageAny(
+  player: PlayerState,
+  allProperties: PropertyState[]
+): boolean {
+  const ownedProperties = getOwnedProperties(player._id, allProperties);
+  return ownedProperties.some((prop) => canUnmortgage(player, prop).valid);
+}
+
+// ============================================================
 // TRADE VALIDATION
 // ============================================================
 
