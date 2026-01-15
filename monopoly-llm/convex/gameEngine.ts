@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { mutation, internalMutation } from "./_generated/server";
+import { mutation, internalMutation, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Id, Doc } from "./_generated/dataModel";
 import {
   BOARD,
   GO_SALARY,
@@ -9,7 +9,7 @@ import {
   JAIL_FINE,
   MAX_JAIL_TURNS,
 } from "./lib/constants";
-import { getSpace, calculateNewPosition, passedGo } from "./lib/board";
+import { getSpace, calculateNewPosition, passedGo, getPurchasePrice, getMortgageValue, getHouseCost } from "./lib/board";
 import { calculateRent, hasMonopoly } from "./lib/rent";
 import {
   executeChanceCard,
@@ -217,12 +217,12 @@ export const processTurnStep = internalMutation({
 // ============================================================
 
 async function processPreRoll(
-  ctx: any,
-  game: any,
-  player: any,
-  _allPlayers: any[],
-  properties: any[],
-  turn: any
+  ctx: MutationCtx,
+  game: Doc<"games">,
+  player: Doc<"players">,
+  _allPlayers: Doc<"players">[],
+  properties: Doc<"properties">[],
+  turn: Doc<"turns">
 ) {
   // If player is in jail, ask LLM for jail strategy decision
   if (player.inJail) {
@@ -296,11 +296,11 @@ async function processPreRoll(
 }
 
 async function processRolling(
-  ctx: any,
-  game: any,
-  player: any,
-  _properties: any[],
-  turn: any
+  ctx: MutationCtx,
+  game: Doc<"games">,
+  player: Doc<"players">,
+  _properties: Doc<"properties">[],
+  turn: Doc<"turns">
 ) {
   // Handle jail roll attempt
   if (player.inJail) {
@@ -364,7 +364,7 @@ async function processRolling(
           await addTurnEvent(ctx, turn._id, `Cannot afford $${JAIL_FINE} jail fine - BANKRUPT!`);
           const properties = await ctx.db
             .query("properties")
-            .withIndex("by_game", (q: any) => q.eq("gameId", game._id))
+            .withIndex("by_game", (q) => q.eq("gameId", game._id))
             .collect();
           await handleBankruptcy(ctx, game._id, player._id, undefined, properties);
           await ctx.db.patch(game._id, { currentPhase: "turn_end" });
@@ -441,12 +441,12 @@ async function processRolling(
 }
 
 async function processPostRoll(
-  ctx: any,
-  game: any,
-  player: any,
-  allPlayers: any[],
-  properties: any[],
-  turn: any
+  ctx: MutationCtx,
+  game: Doc<"games">,
+  player: Doc<"players">,
+  allPlayers: Doc<"players">[],
+  properties: Doc<"properties">[],
+  turn: Doc<"turns">
 ) {
   const space = getSpace(player.position);
 
@@ -459,7 +459,7 @@ async function processPostRoll(
 
       if (!property.ownerId) {
         // Unowned - player can buy or auction
-        const cost = (space as any).cost || 0;
+        const cost = getPurchasePrice(property.position);
 
         // Ask LLM for buy/auction decision
         const context = JSON.stringify({
@@ -539,19 +539,18 @@ async function processPostRoll(
     case "community_chest": {
       // Draw card from deck (proper Monopoly rules - draw in order, reshuffle when empty)
       const isChance = space.type === "chance";
-      const cards = isChance ? CHANCE_CARDS : COMMUNITY_CHEST_CARDS;
       let deck = isChance ? (game.chanceDeck ?? []) : (game.communityChestDeck ?? []);
+      const deckLength = isChance ? CHANCE_CARDS.length : COMMUNITY_CHEST_CARDS.length;
 
       // Reshuffle if deck is empty
       if (deck.length === 0) {
-        deck = shuffleDeckIndices(cards.length);
+        deck = shuffleDeckIndices(deckLength);
         await addTurnEvent(ctx, turn._id, `${isChance ? "Chance" : "Community Chest"} deck reshuffled`);
       }
 
       // Draw from front of deck
       const cardIndex = deck[0];
       const remainingDeck = deck.slice(1);
-      const card = cards[cardIndex];
 
       // Update deck in game state
       if (isChance) {
@@ -560,9 +559,7 @@ async function processPostRoll(
         await ctx.db.patch(game._id, { communityChestDeck: remainingDeck });
       }
 
-      await addTurnEvent(ctx, turn._id, `Drew ${isChance ? "Chance" : "Community Chest"}: "${card.text}"`);
-
-      // Execute card effects
+      // Execute card effects with proper typing
       const playerState = { _id: player._id, cash: player.cash, position: player.position };
       const allPlayerStates = allPlayers.map((p) => ({
         _id: p._id,
@@ -570,9 +567,17 @@ async function processPostRoll(
         position: p.position,
       }));
 
-      const result = space.type === "chance"
-        ? executeChanceCard(card as any, playerState, allPlayerStates, properties)
-        : executeCommunityChestCard(card as any, playerState, allPlayerStates, properties);
+      const result = isChance
+        ? (() => {
+            const card = CHANCE_CARDS[cardIndex];
+            addTurnEvent(ctx, turn._id, `Drew Chance: "${card.text}"`);
+            return executeChanceCard(card, playerState, allPlayerStates, properties);
+          })()
+        : (() => {
+            const card = COMMUNITY_CHEST_CARDS[cardIndex];
+            addTurnEvent(ctx, turn._id, `Drew Community Chest: "${card.text}"`);
+            return executeCommunityChestCard(card, playerState, allPlayerStates, properties);
+          })();
 
       // Apply effects
       let updatedCash = player.cash;
@@ -652,7 +657,7 @@ async function processPostRoll(
           else if (landedSpace.type === "chance" || landedSpace.type === "community_chest") {
             // Draw another card from the new deck
             const isChance2 = landedSpace.type === "chance";
-            const cards2 = isChance2 ? CHANCE_CARDS : COMMUNITY_CHEST_CARDS;
+            const deckLength2 = isChance2 ? CHANCE_CARDS.length : COMMUNITY_CHEST_CARDS.length;
 
             // Get fresh game state for deck
             const freshGame = await ctx.db.get(game._id);
@@ -660,14 +665,13 @@ async function processPostRoll(
 
             // Reshuffle if deck is empty
             if (deck2.length === 0) {
-              deck2 = shuffleDeckIndices(cards2.length);
+              deck2 = shuffleDeckIndices(deckLength2);
               await addTurnEvent(ctx, turn._id, `${isChance2 ? "Chance" : "Community Chest"} deck reshuffled`);
             }
 
             // Draw from front of deck
             const cardIndex2 = deck2[0];
             const remainingDeck2 = deck2.slice(1);
-            const card2 = cards2[cardIndex2];
 
             // Update deck in game state
             if (isChance2) {
@@ -675,8 +679,6 @@ async function processPostRoll(
             } else {
               await ctx.db.patch(game._id, { communityChestDeck: remainingDeck2 });
             }
-
-            await addTurnEvent(ctx, turn._id, `Drew ${isChance2 ? "Chance" : "Community Chest"}: "${card2.text}"`);
 
             // Execute the second card
             const freshPlayer = await ctx.db.get(player._id);
@@ -693,8 +695,16 @@ async function processPostRoll(
             );
 
             const result2 = isChance2
-              ? executeChanceCard(card2 as any, playerState2, allPlayerStates2, properties)
-              : executeCommunityChestCard(card2 as any, playerState2, allPlayerStates2, properties);
+              ? (() => {
+                  const card2 = CHANCE_CARDS[cardIndex2];
+                  addTurnEvent(ctx, turn._id, `Drew Chance: "${card2.text}"`);
+                  return executeChanceCard(card2, playerState2, allPlayerStates2, properties);
+                })()
+              : (() => {
+                  const card2 = COMMUNITY_CHEST_CARDS[cardIndex2];
+                  addTurnEvent(ctx, turn._id, `Drew Community Chest: "${card2.text}"`);
+                  return executeCommunityChestCard(card2, playerState2, allPlayerStates2, properties);
+                })();
 
             // Apply second card effects
             let updatedCash2 = playerState2.cash;
@@ -870,11 +880,11 @@ async function processPostRoll(
 }
 
 async function processTurnEnd(
-  ctx: any,
-  game: any,
-  player: any,
-  allPlayers: any[],
-  turn: any
+  ctx: MutationCtx,
+  game: Doc<"games">,
+  player: Doc<"players">,
+  allPlayers: Doc<"players">[],
+  turn: Doc<"turns">
 ) {
   // Complete turn record
   const playerData = await ctx.db.get(player._id);
@@ -900,14 +910,12 @@ async function processTurnEnd(
     for (const p of activePlayers) {
       const playerProps = await ctx.db
         .query("properties")
-        .withIndex("by_owner", (q: any) => q.eq("ownerId", p._id))
+        .withIndex("by_owner", (q) => q.eq("ownerId", p._id))
         .collect();
 
       let netWorth = p.cash;
       for (const prop of playerProps) {
-        netWorth += prop.isMortgaged ? 0 : getSpace(prop.position).type === "property"
-          ? (getSpace(prop.position) as any).cost
-          : 200;
+        netWorth += prop.isMortgaged ? 0 : getPurchasePrice(prop.position);
       }
 
       if (netWorth > highestNetWorth) {
@@ -931,7 +939,7 @@ async function processTurnEnd(
   const currentTurnOrder = player.turnOrder;
   const totalPlayers = (await ctx.db
     .query("players")
-    .withIndex("by_game", (q: any) => q.eq("gameId", game._id))
+    .withIndex("by_game", (q) => q.eq("gameId", game._id))
     .collect()).length;
 
   // Find next active player by turnOrder
@@ -978,7 +986,7 @@ function rollDice(): [number, number] {
   return [d1, d2];
 }
 
-async function addTurnEvent(ctx: any, turnId: Id<"turns">, event: string) {
+async function addTurnEvent(ctx: MutationCtx, turnId: Id<"turns">, event: string) {
   const turn = await ctx.db.get(turnId);
   if (turn) {
     await ctx.db.patch(turnId, {
@@ -988,11 +996,11 @@ async function addTurnEvent(ctx: any, turnId: Id<"turns">, event: string) {
 }
 
 async function handleBankruptcy(
-  ctx: any,
+  ctx: MutationCtx,
   gameId: Id<"games">,
   playerId: Id<"players">,
   creditorId: Id<"players"> | undefined,
-  properties: any[]
+  properties: Doc<"properties">[]
 ) {
   const player = await ctx.db.get(playerId);
   if (!player) return;
@@ -1003,10 +1011,10 @@ async function handleBankruptcy(
   // Get remaining active players to determine final position
   const allPlayers = await ctx.db
     .query("players")
-    .withIndex("by_game", (q: any) => q.eq("gameId", gameId))
+    .withIndex("by_game", (q) => q.eq("gameId", gameId))
     .collect();
 
-  const activePlayers = allPlayers.filter((p: any) => !p.isBankrupt && p._id !== playerId);
+  const activePlayers = allPlayers.filter((p) => !p.isBankrupt && p._id !== playerId);
   const finalPosition = activePlayers.length + 1; // e.g., 2nd place if 1 remaining
 
   // Mark player as bankrupt
@@ -1030,7 +1038,7 @@ async function handleBankruptcy(
 }
 
 async function handleGameEnd(
-  ctx: any,
+  ctx: MutationCtx,
   gameId: Id<"games">,
   winnerId: Id<"players"> | undefined
 ) {
@@ -1277,8 +1285,7 @@ export const buyProperty = mutation({
       throw new Error("Property already owned");
     }
 
-    const space = getSpace(property.position);
-    const cost = args.price ?? (space as any).cost;
+    const cost = args.price ?? getPurchasePrice(property.position);
 
     if (player.cash < cost) {
       throw new Error("Not enough cash");
@@ -1377,7 +1384,7 @@ export const buildHouse = mutation({
     }
 
     const count = args.count ?? 1;
-    const houseCost = (space as any).houseCost ?? 50;
+    const houseCost = getHouseCost(property.position);
     const totalCost = houseCost * count;
 
     if (player.cash < totalCost) {
@@ -1416,8 +1423,7 @@ export const mortgageProperty = mutation({
     const player = await ctx.db.get(property.ownerId);
     if (!player) throw new Error("Owner not found");
 
-    const space = getSpace(property.position);
-    const mortgageValue = Math.floor((space as any).cost / 2);
+    const mortgageValue = getMortgageValue(property.position);
 
     await ctx.db.patch(args.propertyId, { isMortgaged: true });
     await ctx.db.patch(property.ownerId, { cash: player.cash + mortgageValue });
@@ -1442,8 +1448,7 @@ export const unmortgageProperty = mutation({
     const player = await ctx.db.get(property.ownerId);
     if (!player) throw new Error("Owner not found");
 
-    const space = getSpace(property.position);
-    const mortgageValue = Math.floor((space as any).cost / 2);
+    const mortgageValue = getMortgageValue(property.position);
     const unmortgageCost = Math.floor(mortgageValue * 1.1); // 10% interest
 
     if (player.cash < unmortgageCost) {

@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id, Doc } from "./_generated/dataModel";
-import { getSpace, getHouseCost, getMortgageValue, getUnmortgageCost } from "./lib/board";
+import { getSpace, getHouseCost, getMortgageValue, getUnmortgageCost, getPurchasePrice } from "./lib/board";
 import { JAIL_FINE } from "./lib/constants";
 import {
   canBuildHouse,
@@ -69,7 +69,7 @@ export const executeBuyPropertyDecision = internalMutation({
     if (!game || !player || !property) return;
 
     const space = getSpace(args.propertyPosition);
-    const cost = (space as any).cost || 0;
+    const cost = getPurchasePrice(args.propertyPosition);
 
     // Add turn event helper
     const addEvent = async (event: string) => {
@@ -411,7 +411,7 @@ async function executeBuyPropertyHandler(
   const property = await ctx.db
     .query("properties")
     .withIndex("by_game")
-    .filter((q: any) =>
+    .filter((q) =>
       q.and(
         q.eq(q.field("gameId"), args.gameId),
         q.eq(q.field("position"), args.propertyPosition)
@@ -422,7 +422,7 @@ async function executeBuyPropertyHandler(
   if (!game || !player || !property) return;
 
   const space = getSpace(args.propertyPosition);
-  const cost = (space as any).cost || 0;
+  const cost = getPurchasePrice(args.propertyPosition);
 
   const addEvent = async (event: string) => {
     const turn = await ctx.db.get(args.turnId);
@@ -531,7 +531,7 @@ async function executePrePostRollHandler(
     playerId: Id<"players">;
     turnId: Id<"turns">;
     action: string;
-    parameters: any;
+    parameters: Record<string, unknown>;
     phase: string;
     reasoning?: string;
   }
@@ -645,7 +645,7 @@ async function executeAuctionBidHandler(
     playerId: Id<"players">;
     turnId: Id<"turns">;
     action: string;
-    parameters: any;
+    parameters: Record<string, unknown>;
     context: Record<string, unknown>;
   }
 ) {
@@ -723,7 +723,7 @@ async function executeTradeResponseHandler(
     playerId: Id<"players">;
     turnId: Id<"turns">;
     action: string;
-    parameters: any;
+    parameters: Record<string, unknown>;
     context: Record<string, unknown>;
     reasoning: string;
   }
@@ -752,7 +752,7 @@ async function executeTradeResponseHandler(
 
   const allProperties = await ctx.db
     .query("properties")
-    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
     .collect();
 
   const offer: TradeOffer = {
@@ -890,11 +890,11 @@ async function startAuctionFlow(
 
   const players = await ctx.db
     .query("players")
-    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
     .collect();
 
-  const activePlayers = players.filter((p: any) => !p.isBankrupt);
-  activePlayers.sort((a: any, b: any) => a.turnOrder - b.turnOrder);
+  const activePlayers = players.filter((p) => !p.isBankrupt);
+  activePlayers.sort((a, b) => a.turnOrder - b.turnOrder);
 
   if (activePlayers.length === 0) {
     await appendTurnEvent(ctx, args.turnId, `Auction canceled for ${args.propertyName}`);
@@ -902,7 +902,7 @@ async function startAuctionFlow(
     return;
   }
 
-  const bidderOrder = activePlayers.map((p: any) => p._id);
+  const bidderOrder = activePlayers.map((p) => p._id);
   const context: AuctionContext = {
     propertyId: args.propertyId,
     propertyName: args.propertyName,
@@ -1020,7 +1020,7 @@ async function applyBuildAction(
 
   const allProperties = await ctx.db
     .query("properties")
-    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
     .collect();
 
   const property = findPropertyByName(allProperties, propertyName);
@@ -1034,10 +1034,14 @@ async function applyBuildAction(
   let remainingCash = player.cash;
   let lastReason = "Invalid build";
 
-  const updatedProperties = allProperties.map((p: any) =>
+  const updatedProperties = allProperties.map((p) =>
     p._id === property._id ? { ...p } : p
   );
-  const target = updatedProperties.find((p: any) => p._id === property._id);
+  const target = updatedProperties.find((p) => p._id === property._id);
+
+  if (!target) {
+    return { message: `Build failed: property "${propertyName}" not found in game` };
+  }
 
   for (let i = 0; i < count; i++) {
     const validation = canBuildHouse(
@@ -1084,7 +1088,7 @@ async function applyMortgageAction(
 
   const allProperties = await ctx.db
     .query("properties")
-    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
     .collect();
 
   const property = findPropertyByName(allProperties, propertyName);
@@ -1123,7 +1127,7 @@ async function applyUnmortgageAction(
 
   const allProperties = await ctx.db
     .query("properties")
-    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
     .collect();
 
   const property = findPropertyByName(allProperties, propertyName);
@@ -1168,7 +1172,7 @@ async function applyTradeAction(
 
   const allPlayers = await ctx.db
     .query("players")
-    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
     .collect();
 
   const recipient = findPlayerByName(allPlayers, recipientName);
@@ -1179,7 +1183,7 @@ async function applyTradeAction(
 
   const allProperties = await ctx.db
     .query("properties")
-    .withIndex("by_game", (q: any) => q.eq("gameId", args.gameId))
+    .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
     .collect();
 
   const offerPropertyNames = normalizeStringArray(args.parameters.offerProperties);

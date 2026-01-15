@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, mutation } from "./_generated/server";
+import { internalMutation, mutation, type MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { BOARD } from "./lib/constants";
 
@@ -104,7 +104,7 @@ export const updateStatsAfterGame = internalMutation({
 // ============================================================
 
 async function updateModelStats(
-  ctx: { db: any },
+  ctx: MutationCtx,
   data: {
     player: Doc<"players">;
     game: Doc<"games">;
@@ -122,7 +122,7 @@ async function updateModelStats(
   // Find or create model stats record
   const existing = await ctx.db
     .query("modelStats")
-    .withIndex("by_model", (q: any) => q.eq("modelId", player.modelId))
+    .withIndex("by_model", (q) => q.eq("modelId", player.modelId))
     .first();
 
   // Determine placement
@@ -212,7 +212,7 @@ async function updateModelStats(
 // ============================================================
 
 async function updateHeadToHead(
-  ctx: { db: any },
+  ctx: MutationCtx,
   data: {
     playerA: Doc<"players">;
     playerB: Doc<"players">;
@@ -238,7 +238,7 @@ async function updateHeadToHead(
   // Find or create record
   const existing = await ctx.db
     .query("headToHead")
-    .withIndex("by_pair", (q: any) => q.eq("pairKey", pairKey))
+    .withIndex("by_pair", (q) => q.eq("pairKey", pairKey))
     .first();
 
   if (existing) {
@@ -273,7 +273,7 @@ async function updateHeadToHead(
 // ============================================================
 
 async function updatePropertyStats(
-  ctx: { db: any },
+  ctx: MutationCtx,
   data: {
     gameId: Id<"games">;
     properties: Doc<"properties">[];
@@ -298,7 +298,7 @@ async function updatePropertyStats(
     // Find existing stats
     const existing = await ctx.db
       .query("propertyStats")
-      .withIndex("by_property", (q: any) => q.eq("propertyName", property.name))
+      .withIndex("by_property", (q) => q.eq("propertyName", property.name))
       .first();
 
     const rentCollectedThisGame = rentByProperty[property.name] || 0;
