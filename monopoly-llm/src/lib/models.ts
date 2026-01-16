@@ -37,11 +37,11 @@ export const AVAILABLE_MODELS: readonly LLMModel[] = [
     costPerMillion: { input: 0.1, output: 0.4 },
   },
   {
-    id: "google/gemini-2.5-flash-preview",
+    id: "google/gemini-2.5-flash",
     name: "Gemini 2.5 Flash",
     provider: "Google",
     tier: "budget",
-    description: "Latest budget Gemini model",
+    description: "Latest budget Gemini model with built-in reasoning",
     costPerMillion: { input: 0.15, output: 0.6 },
   },
   {
@@ -73,11 +73,11 @@ export const AVAILABLE_MODELS: readonly LLMModel[] = [
     costPerMillion: { input: 2.5, output: 10 },
   },
   {
-    id: "google/gemini-2.5-pro-preview",
+    id: "google/gemini-2.5-pro",
     name: "Gemini 2.5 Pro",
     provider: "Google",
     tier: "standard",
-    description: "Google's capable mid-tier model",
+    description: "Google's capable mid-tier model with advanced reasoning",
     costPerMillion: { input: 1.25, output: 10 },
   },
   {

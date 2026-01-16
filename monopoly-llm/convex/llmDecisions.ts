@@ -67,6 +67,8 @@ export const getLLMDecision = internalAction({
   handler: async (ctx, args): Promise<void> => {
     const startTime = Date.now();
 
+    console.log(`[LLM] Game: ${args.gameId} | Decision: ${args.decisionType} | Player: ${args.playerId}`);
+
     const decisionContext = safeParseJson(args.context);
     const validActions = getValidActions(args.decisionType, decisionContext);
 
@@ -157,40 +159,53 @@ export const getLLMDecision = internalAction({
       },
     });
 
-    let response;
     let rawResponse = "";
     let promptTokens = 0;
     let completionTokens = 0;
 
-    try {
-      response = await Promise.race([
-        client.chat.completions.create({
-          model: player.modelId,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          temperature: 0.7,
-          max_tokens: 500,
-        }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Request timeout")), 30000)
-        ),
-      ]);
+    // Retry logic: try up to 3 times with increasing timeouts
+    const maxRetries = 3;
+    const timeouts = [30000, 45000, 60000]; // 30s, 45s, 60s
 
-      rawResponse = response.choices[0]?.message?.content || "";
-      promptTokens = response.usage?.prompt_tokens || 0;
-      completionTokens = response.usage?.completion_tokens || 0;
-    } catch (error) {
-      // LLM API call failed - throw error so it can be debugged
-      const errorMsg = `LLM API call failed for ${args.decisionType}: ${(error as Error).message}`;
-      console.error(`[LLM_ERROR] ${errorMsg}`);
-      console.error(`[LLM_ERROR] Model: ${player.modelId}, Player: ${player.modelDisplayName}`);
-      throw new Error(errorMsg);
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await Promise.race([
+          client.chat.completions.create({
+            model: player.modelId,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+            temperature: 0.7,
+            max_tokens: 500,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Request timeout")), timeouts[attempt])
+          ),
+        ]);
+
+        rawResponse = response.choices[0]?.message?.content || "";
+        promptTokens = response.usage?.prompt_tokens || 0;
+        completionTokens = response.usage?.completion_tokens || 0;
+        break; // Success - exit retry loop
+      } catch (error) {
+        const errorMsg = `LLM API call failed for ${args.decisionType}: ${(error as Error).message}`;
+        console.error(`[LLM_ERROR] Game: ${args.gameId} | Attempt ${attempt + 1}/${maxRetries}: ${errorMsg}`);
+        console.error(`[LLM_ERROR] Game: ${args.gameId} | Model: ${player.modelId}, Player: ${player.modelDisplayName}`);
+
+        if (attempt === maxRetries - 1) {
+          // Final attempt failed - use fallback
+          rawResponse = `[ERROR: ${(error as Error).message} after ${maxRetries} attempts]`;
+        } else {
+          // Wait before retrying (exponential backoff: 1s, 2s)
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+          console.log(`[LLM_RETRY] Game: ${args.gameId} | Retrying... attempt ${attempt + 2}/${maxRetries}`);
+        }
+      }
     }
 
     const latencyMs = Date.now() - startTime;
-    let parsed = parseDecisionResponse(rawResponse, validActions);
+    let parsed = rawResponse.startsWith("[ERROR:") ? null : parseDecisionResponse(rawResponse, validActions);
     if (parsed && args.decisionType === "auction_bid") {
       const amount = extractBidAmount(parsed.parameters, player.cash);
       parsed = { ...parsed, parameters: { ...parsed.parameters, amount } };
@@ -202,7 +217,7 @@ export const getLLMDecision = internalAction({
     if (parsed) {
       const validation = validateDecision(parsed, args.decisionType);
       if (!validation.valid) {
-        console.error(`[LLM_VALIDATION] Decision validation failed: ${validation.error}`);
+        console.error(`[LLM_VALIDATION] Game: ${args.gameId} | Decision validation failed: ${validation.error}`);
         decision = getFallbackDecision(args.decisionType, validActions, rawResponse);
       }
     }
@@ -210,6 +225,8 @@ export const getLLMDecision = internalAction({
       const amount = extractBidAmount(decision.parameters, player.cash);
       decision = { ...decision, parameters: { ...decision.parameters, amount } };
     }
+
+    console.log(`[LLM] Game: ${args.gameId} | ${player.modelDisplayName} chose: ${decision.action} (${latencyMs}ms)`);
 
     await ctx.runMutation(internal.llmDecisionExecutors.processDecisionResult, {
       gameId: args.gameId,

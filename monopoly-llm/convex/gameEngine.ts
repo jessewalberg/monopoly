@@ -132,6 +132,8 @@ export const processTurnStep = internalMutation({
     const game = await ctx.db.get(args.gameId);
     if (!game || game.status !== "in_progress") return;
 
+    console.log(`[GAME] ${args.gameId} | Turn ${game.currentTurnNumber} | Phase: ${game.currentPhase}`);
+
     // Don't process if game is paused
     if (game.isPaused) return;
 
