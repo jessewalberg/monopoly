@@ -37,15 +37,15 @@ export const AVAILABLE_MODELS: readonly LLMModel[] = [
     costPerMillion: { input: 0.1, output: 0.4 },
   },
   {
-    id: "google/gemini-2.5-flash",
-    name: "Gemini 2.5 Flash",
+    id: "google/gemini-2.5-flash-lite",
+    name: "Gemini 2.5 Flash Lite",
     provider: "Google",
     tier: "budget",
-    description: "Latest budget Gemini model with built-in reasoning",
-    costPerMillion: { input: 0.15, output: 0.6 },
+    description: "Ultra-low latency and cost efficient",
+    costPerMillion: { input: 0.1, output: 0.4 },
   },
   {
-    id: "anthropic/claude-3-5-haiku-20241022",
+    id: "anthropic/claude-3.5-haiku",
     name: "Claude 3.5 Haiku",
     provider: "Anthropic",
     tier: "budget",
@@ -53,12 +53,12 @@ export const AVAILABLE_MODELS: readonly LLMModel[] = [
     costPerMillion: { input: 0.8, output: 4 },
   },
   {
-    id: "x-ai/grok-2-1212",
-    name: "Grok 2",
+    id: "x-ai/grok-3-mini",
+    name: "Grok 3 Mini",
     provider: "xAI",
     tier: "budget",
-    description: "xAI's efficient model",
-    costPerMillion: { input: 2, output: 10 },
+    description: "Lightweight thinking model from xAI",
+    costPerMillion: { input: 0.3, output: 0.5 },
   },
 
   // ============================================================
@@ -73,15 +73,15 @@ export const AVAILABLE_MODELS: readonly LLMModel[] = [
     costPerMillion: { input: 2.5, output: 10 },
   },
   {
-    id: "google/gemini-2.5-pro",
-    name: "Gemini 2.5 Pro",
+    id: "google/gemini-2.5-flash",
+    name: "Gemini 2.5 Flash",
     provider: "Google",
     tier: "standard",
-    description: "Google's capable mid-tier model with advanced reasoning",
-    costPerMillion: { input: 1.25, output: 10 },
+    description: "Google's workhorse model with built-in thinking",
+    costPerMillion: { input: 0.3, output: 2.5 },
   },
   {
-    id: "anthropic/claude-3-5-sonnet-20241022",
+    id: "anthropic/claude-3.5-sonnet",
     name: "Claude 3.5 Sonnet",
     provider: "Anthropic",
     tier: "standard",
@@ -93,8 +93,8 @@ export const AVAILABLE_MODELS: readonly LLMModel[] = [
     name: "Grok 3",
     provider: "xAI",
     tier: "standard",
-    description: "xAI's latest model",
-    costPerMillion: { input: 3, output: 15 },
+    description: "xAI's flagship model",
+    costPerMillion: { input: 0.3, output: 0.5 },
   },
 
   // ============================================================
@@ -117,6 +117,14 @@ export const AVAILABLE_MODELS: readonly LLMModel[] = [
     costPerMillion: { input: 1.1, output: 4.4 },
   },
   {
+    id: "google/gemini-2.5-pro",
+    name: "Gemini 2.5 Pro",
+    provider: "Google",
+    tier: "premium",
+    description: "Google's most capable reasoning model",
+    costPerMillion: { input: 1.25, output: 10 },
+  },
+  {
     id: "anthropic/claude-sonnet-4",
     name: "Claude Sonnet 4",
     provider: "Anthropic",
@@ -125,12 +133,12 @@ export const AVAILABLE_MODELS: readonly LLMModel[] = [
     costPerMillion: { input: 3, output: 15 },
   },
   {
-    id: "anthropic/claude-opus-4",
-    name: "Claude Opus 4",
-    provider: "Anthropic",
+    id: "x-ai/grok-4",
+    name: "Grok 4",
+    provider: "xAI",
     tier: "premium",
-    description: "Most capable Claude model",
-    costPerMillion: { input: 15, output: 75 },
+    description: "xAI's latest reasoning model",
+    costPerMillion: { input: 0.2, output: 1.5 },
   },
 ] as const;
 

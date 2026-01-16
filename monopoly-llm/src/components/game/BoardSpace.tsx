@@ -16,22 +16,10 @@ export interface BoardSpaceProps {
 }
 
 // ============================================================
-// ROTATION HELPERS
+// LAYOUT HELPERS
 // ============================================================
 
-function getRotation(side: BoardSide): string {
-  switch (side) {
-    case "top": return "rotate-180";
-    case "left": return "rotate-90";
-    case "right": return "-rotate-90";
-    case "bottom":
-    case "corner":
-    default: return "";
-  }
-}
-
 function getColorBandPosition(side: BoardSide): string {
-  // Color band should be on the outer edge of the board
   switch (side) {
     case "top": return "bottom-0 left-0 right-0 h-[30%]";
     case "left": return "right-0 top-0 bottom-0 w-[30%]";
@@ -42,22 +30,39 @@ function getColorBandPosition(side: BoardSide): string {
 }
 
 function getOwnerIndicatorPosition(side: BoardSide): string {
-  // Position owner indicator on the INNER edge (opposite of color band)
+  switch (side) {
+    case "top": return "top-0.5 left-0.5";
+    case "left": return "bottom-0.5 left-0.5";
+    case "right": return "bottom-0.5 right-0.5";
+    case "bottom":
+    default: return "bottom-0.5 left-0.5";
+  }
+}
+
+function getTextRotationClass(side: BoardSide): string {
   switch (side) {
     case "top":
-      // Color band at bottom, so owner indicator goes top-left
-      return "top-0.5 left-0.5";
+      return "rotate-180";
     case "left":
-      // Color band at right, so owner indicator goes bottom-left
-      return "bottom-0.5 left-0.5";
+      return "rotate-90";
     case "right":
-      // Color band at left, so owner indicator goes bottom-right
-      return "bottom-0.5 right-0.5";
+      return "-rotate-90";
     case "bottom":
     default:
-      // Color band at top, so owner indicator goes bottom-left
-      return "bottom-0.5 left-0.5";
+      return "";
   }
+}
+
+function getContentPaddingClass(side: BoardSide, isVertical: boolean): string {
+  if (isVertical) {
+    return side === "left" ? "pr-[35%]" : "pl-[35%]";
+  }
+
+  return side === "top" ? "pb-[35%]" : "pt-[35%]";
+}
+
+function getContentOffsetClass(side: BoardSide): string {
+  return side === "left" ? "translate-y-0.5" : "";
 }
 
 // ============================================================
@@ -67,12 +72,10 @@ function getOwnerIndicatorPosition(side: BoardSide): string {
 function HouseIndicator({ count, side }: { count: number; side: BoardSide }) {
   if (count === 0) return null;
 
-  // Position houses on the color band (outer edge)
   const isVertical = side === "left" || side === "right";
   const positionClass = isVertical ? "flex-col gap-0.5" : "flex-row gap-0.5";
 
   if (count === 5) {
-    // Hotel - red building
     return (
       <div className={`flex ${positionClass} items-center justify-center`}>
         <div className="w-3 h-3 bg-red-600 rounded-sm border border-red-800" title="Hotel" />
@@ -80,7 +83,6 @@ function HouseIndicator({ count, side }: { count: number; side: BoardSide }) {
     );
   }
 
-  // Houses - green buildings
   return (
     <div className={`flex ${positionClass} items-center justify-center`}>
       {Array.from({ length: count }).map((_, i) => (
@@ -112,7 +114,6 @@ function PropertySpaceContent({
   const groupColor = GROUP_COLORS[space.group];
   const colorBandPos = getColorBandPosition(side);
   const isVertical = side === "left" || side === "right";
-
   // Shorten property names
   const shortName = space.name
     .replace(" Avenue", " Ave")
@@ -121,36 +122,49 @@ function PropertySpaceContent({
     .replace("Mediterranean", "Med.")
     .replace("Connecticut", "Conn.")
     .replace("Pennsylvania", "Penn.")
-    .replace("North Carolina", "N. Carolina")
-    .replace("St. Charles", "St. Chas")
-    .replace("St. James", "St. Jas");
+    .replace("North Carolina", "N.C.")
+    .replace("St. Charles", "St.Chas")
+    .replace("St. James", "St.Jas");
+
+  const rotationClass = getTextRotationClass(side);
+
+  const contentPaddingClass = getContentPaddingClass(side, isVertical);
+
+  const contentOffsetClass = getContentOffsetClass(side);
 
   return (
-    <div className={`w-full h-full bg-[#D5E8D4] flex flex-col relative ${isMortgaged ? "opacity-50" : ""}`}>
+    <div className={`w-full h-full bg-[#D5E8D4] relative ${isMortgaged ? "opacity-50" : ""}`}>
       {/* Color band on outer edge */}
       <div
-        className={`absolute ${colorBandPos}`}
+        className={`absolute ${colorBandPos} z-0`}
         style={{ backgroundColor: groupColor }}
       >
-        {/* Houses on color band */}
         <div className="absolute inset-0 flex items-center justify-center">
           <HouseIndicator count={houses} side={side} />
         </div>
       </div>
 
       {/* Property content */}
-      <div className={`flex-1 flex flex-col items-center justify-center p-0.5 ${isVertical ? "pt-1" : "pt-[32%]"}`}>
-        <span className={`text-[6px] sm:text-[7px] font-semibold text-black leading-tight text-center px-0.5 ${getRotation(side)}`}>
-          {shortName}
-        </span>
-        {!isOwned && (
-          <span className={`text-[5px] sm:text-[6px] text-slate-600 ${getRotation(side)}`}>
+      <div
+        className={`absolute inset-0 flex items-center justify-center ${contentPaddingClass} ${contentOffsetClass}`}
+      >
+        <div
+          className={`flex flex-col items-center justify-center gap-0.5 origin-center ${rotationClass}`}
+        >
+          <span className="text-[6px] sm:text-[7px] font-semibold text-black leading-tight text-center">
+            {shortName}
+          </span>
+          <span
+            className={`text-[6px] sm:text-[7px] font-bold leading-tight ${
+              isOwned ? "text-emerald-800/80" : "text-green-700"
+            }`}
+          >
             ${space.cost}
           </span>
-        )}
+        </div>
       </div>
 
-      {/* Owner indicator - positioned on inner edge based on side */}
+      {/* Owner indicator */}
       {isOwned && ownerColor && (
         <div
           className={`absolute ${getOwnerIndicatorPosition(side)} w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm z-10`}
@@ -178,20 +192,34 @@ function RailroadSpaceContent({
   ownerColor?: string;
   isMortgaged: boolean;
 }) {
-  const shortName = space.name.replace(" Railroad", "");
+  const shortName = space.name.replace(" Railroad", "").replace("Pennsylvania", "Penn.");
+
+  const rotationClass = getTextRotationClass(side);
+
+  const contentPaddingClass = getContentPaddingClass(side, true);
+
+  const contentOffsetClass = getContentOffsetClass(side);
 
   return (
-    <div className={`w-full h-full bg-[#D5E8D4] flex flex-col items-center justify-center p-0.5 relative ${isMortgaged ? "opacity-50" : ""}`}>
-      <div className={`flex flex-col items-center ${getRotation(side)}`}>
-        <svg className="w-6 h-6 text-black" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2L9 7h2v3H8v2h3v3H8v2h3v3h2v-3h3v-2h-3v-3h3v-2h-3V7h2l-3-5zM4 21v2h16v-2H4z" />
-        </svg>
-        <span className="text-[6px] sm:text-[7px] font-semibold text-black text-center leading-tight">
-          {shortName}
-        </span>
-        {!isOwned && (
-          <span className="text-[5px] sm:text-[6px] text-slate-600">${space.cost}</span>
-        )}
+    <div className={`w-full h-full bg-[#D5E8D4] relative ${isMortgaged ? "opacity-50" : ""}`}>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div
+          className={`flex flex-col items-center justify-center gap-0.5 origin-center ${rotationClass} ${contentPaddingClass} ${contentOffsetClass}`}
+        >
+          <svg className="w-4 h-4 text-black flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L9 7h2v3H8v2h3v3H8v2h3v3h2v-3h3v-2h-3v-3h3v-2h-3V7h2l-3-5zM4 21v2h16v-2H4z" />
+          </svg>
+          <span className="text-[5px] sm:text-[6px] font-semibold text-black text-center leading-tight">
+            {shortName}
+          </span>
+          <span
+            className={`text-[5px] sm:text-[6px] font-bold leading-tight ${
+              isOwned ? "text-emerald-800/80" : "text-green-700"
+            }`}
+          >
+            ${space.cost}
+          </span>
+        </div>
       </div>
       {isOwned && ownerColor && (
         <div
@@ -222,27 +250,38 @@ function UtilitySpaceContent({
 }) {
   const isElectric = space.name.includes("Electric");
 
+  const rotationClass = getTextRotationClass(side);
+
+  const contentPaddingClass = getContentPaddingClass(side, true);
+
+  const contentOffsetClass = getContentOffsetClass(side);
+
   return (
-    <div className={`w-full h-full bg-[#D5E8D4] flex flex-col items-center justify-center p-0.5 relative ${isMortgaged ? "opacity-50" : ""}`}>
-      <div className={`flex flex-col items-center ${getRotation(side)}`}>
-        {isElectric ? (
-          <svg className="w-6 h-6 text-yellow-500" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" />
-          </svg>
-        ) : (
-          <svg className="w-6 h-6 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8zm0 18c-3.35 0-6-2.57-6-6.2 0-2.34 1.95-5.44 6-9.14 4.05 3.7 6 6.79 6 9.14 0 3.63-2.65 6.2-6 6.2z"/>
-          </svg>
-        )}
-        <span className="text-[5px] sm:text-[6px] font-semibold text-black text-center leading-tight">
-          {isElectric ? "ELECTRIC" : "WATER"}
-        </span>
-        <span className="text-[5px] sm:text-[6px] font-semibold text-black text-center leading-tight">
-          COMPANY
-        </span>
-        {!isOwned && (
-          <span className="text-[5px] sm:text-[6px] text-slate-600">${space.cost}</span>
-        )}
+    <div className={`w-full h-full bg-[#D5E8D4] relative ${isMortgaged ? "opacity-50" : ""}`}>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div
+          className={`flex flex-col items-center justify-center gap-0.5 origin-center ${rotationClass} ${contentPaddingClass} ${contentOffsetClass}`}
+        >
+          {isElectric ? (
+            <svg className="w-4 h-4 text-yellow-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8zm0 18c-3.35 0-6-2.57-6-6.2 0-2.34 1.95-5.44 6-9.14 4.05 3.7 6 6.79 6 9.14 0 3.63-2.65 6.2-6 6.2z"/>
+            </svg>
+          )}
+          <span className="text-[5px] sm:text-[6px] font-semibold text-black text-center leading-tight">
+            {isElectric ? "ELEC" : "WATER"}
+          </span>
+          <span
+            className={`text-[5px] sm:text-[6px] font-bold leading-tight ${
+              isOwned ? "text-emerald-800/80" : "text-green-700"
+            }`}
+          >
+            ${space.cost}
+          </span>
+        </div>
       </div>
       {isOwned && ownerColor && (
         <div
@@ -276,22 +315,21 @@ function GoSpace({ players, currentPlayerId }: { players: PlayerOnBoard[]; curre
 }
 
 function JailSpace({ players, currentPlayerId }: { players: PlayerOnBoard[]; currentPlayerId?: Id<"players"> }) {
-  // Separate players into "just visiting" and "in jail"
   const visiting = players.filter(p => !p.inJail);
   const inJail = players.filter(p => p.inJail);
 
   return (
     <div className="w-full h-full bg-[#D5E8D4] flex flex-col items-center justify-between p-1 relative">
-      {/* "Just Visiting" text on left side */}
       <div className="absolute left-0 top-0 bottom-0 w-[30%] flex items-center justify-center">
-        <span className="text-[6px] sm:text-[7px] font-bold text-black transform -rotate-90" style={{ whiteSpace: "nowrap" }}>
+        <span
+          className="text-[6px] sm:text-[7px] font-bold text-black"
+          style={{ writingMode: "vertical-lr", transform: "rotate(180deg)" }}
+        >
           JUST VISITING
         </span>
       </div>
 
-      {/* Jail cell area */}
       <div className="absolute right-0 top-0 w-[70%] h-[70%] bg-orange-400 border-2 border-black flex items-center justify-center">
-        {/* Jail bars */}
         <div className="absolute inset-0 flex justify-around items-stretch">
           {[0, 1, 2].map(i => (
             <div key={i} className="w-0.5 h-full bg-black" />
@@ -299,7 +337,6 @@ function JailSpace({ players, currentPlayerId }: { players: PlayerOnBoard[]; cur
         </div>
         <span className="text-[7px] sm:text-[8px] font-bold text-black z-10 bg-orange-400 px-0.5">IN JAIL</span>
 
-        {/* Players in jail */}
         {inJail.length > 0 && (
           <div className="absolute bottom-0.5 right-0.5 flex gap-0.5">
             {inJail.map(player => (
@@ -314,7 +351,6 @@ function JailSpace({ players, currentPlayerId }: { players: PlayerOnBoard[]; cur
         )}
       </div>
 
-      {/* Players just visiting */}
       {visiting.length > 0 && (
         <div className="absolute bottom-0.5 left-0.5 flex gap-0.5">
           {visiting.map(player => (
@@ -362,11 +398,15 @@ function GoToJailSpace({ players, currentPlayerId }: { players: PlayerOnBoard[];
 // ============================================================
 
 function ChanceSpace({ side, players, currentPlayerId }: { side: BoardSide; players: PlayerOnBoard[]; currentPlayerId?: Id<"players"> }) {
+  const rotationClass = getTextRotationClass(side);
+
+  const contentOffsetClass = getContentOffsetClass(side);
+
   return (
-    <div className="w-full h-full bg-[#D5E8D4] flex flex-col items-center justify-center relative">
-      <div className={`flex flex-col items-center ${getRotation(side)}`}>
+    <div className="w-full h-full bg-[#D5E8D4] flex items-center justify-center relative">
+      <div className={`flex items-center gap-1 origin-center ${rotationClass} ${contentOffsetClass}`}>
         <span className="text-[6px] sm:text-[7px] font-bold text-orange-600">CHANCE</span>
-        <div className="text-2xl sm:text-3xl font-bold text-orange-500">?</div>
+        <span className="text-lg font-bold text-orange-500">?</span>
       </div>
       <PlayerTokensOverlay players={players} currentPlayerId={currentPlayerId} side={side} />
     </div>
@@ -374,11 +414,14 @@ function ChanceSpace({ side, players, currentPlayerId }: { side: BoardSide; play
 }
 
 function CommunityChestSpace({ side, players, currentPlayerId }: { side: BoardSide; players: PlayerOnBoard[]; currentPlayerId?: Id<"players"> }) {
+  const rotationClass = getTextRotationClass(side);
+
+  const contentOffsetClass = getContentOffsetClass(side);
+
   return (
-    <div className="w-full h-full bg-[#D5E8D4] flex flex-col items-center justify-center relative">
-      <div className={`flex flex-col items-center ${getRotation(side)}`}>
-        <span className="text-[5px] sm:text-[6px] font-bold text-blue-600">COMMUNITY</span>
-        <svg className="w-6 h-6 text-blue-500 my-0.5" viewBox="0 0 24 24" fill="currentColor">
+    <div className="w-full h-full bg-[#D5E8D4] flex items-center justify-center relative">
+      <div className={`flex items-center gap-0.5 origin-center ${rotationClass} ${contentOffsetClass}`}>
+        <svg className="w-5 h-5 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
           <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM10 4h4v2h-4V4zm6 11h-3v3h-2v-3H8v-2h3v-3h2v3h3v2z" />
         </svg>
         <span className="text-[5px] sm:text-[6px] font-bold text-blue-600">CHEST</span>
@@ -394,29 +437,20 @@ function CommunityChestSpace({ side, players, currentPlayerId }: { side: BoardSi
 
 function TaxSpace({ space, side, players, currentPlayerId }: { space: BoardSpace & { type: "tax"; amount: number }; side: BoardSide; players: PlayerOnBoard[]; currentPlayerId?: Id<"players"> }) {
   const isIncome = space.name.includes("Income");
+  const rotationClass = getTextRotationClass(side);
+
+  const contentOffsetClass = getContentOffsetClass(side);
 
   return (
-    <div className="w-full h-full bg-[#D5E8D4] flex flex-col items-center justify-center relative">
-      <div className={`flex flex-col items-center ${getRotation(side)}`}>
-        {isIncome ? (
-          <>
-            <span className="text-[5px] sm:text-[6px] font-bold text-black">INCOME</span>
-            <svg className="w-5 h-5 text-black my-0.5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.87L12 5.84z" />
-            </svg>
-            <span className="text-[5px] sm:text-[6px] font-bold text-black">TAX</span>
-            <span className="text-[6px] sm:text-[7px] font-bold text-black">PAY ${space.amount}</span>
-          </>
-        ) : (
-          <>
-            <span className="text-[5px] sm:text-[6px] font-bold text-black">LUXURY</span>
-            <svg className="w-5 h-5 text-black my-0.5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.87L12 5.84z" />
-            </svg>
-            <span className="text-[5px] sm:text-[6px] font-bold text-black">TAX</span>
-            <span className="text-[6px] sm:text-[7px] font-bold text-black">${space.amount}</span>
-          </>
-        )}
+    <div className="w-full h-full bg-[#D5E8D4] flex items-center justify-center relative">
+      <div className={`flex flex-col items-center gap-0.5 origin-center ${rotationClass} ${contentOffsetClass}`}>
+        <svg className="w-4 h-4 text-black flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.87L12 5.84z" />
+        </svg>
+        <span className="text-[5px] sm:text-[6px] font-bold text-black">
+          {isIncome ? "TAX" : "LUX"}
+        </span>
+        <span className="text-[6px] sm:text-[7px] font-bold text-black">${space.amount}</span>
       </div>
       <PlayerTokensOverlay players={players} currentPlayerId={currentPlayerId} side={side} />
     </div>
@@ -514,23 +548,13 @@ export function BoardSpaceComponent({
 // ============================================================
 
 function getTokenPosition(side: BoardSide): string {
-  // Position tokens away from the color band (which is on the outer edge)
   switch (side) {
-    case "top":
-      // Color band at bottom, so tokens go top-right
-      return "top-0.5 right-0.5";
-    case "left":
-      // Color band at right, so tokens go bottom-left
-      return "bottom-0.5 left-0.5";
-    case "right":
-      // Color band at left, so tokens go bottom-right
-      return "bottom-0.5 right-0.5";
-    case "bottom":
-      // Color band at top, so tokens go bottom-right
-      return "bottom-0.5 right-0.5";
+    case "top": return "top-0.5 right-0.5";
+    case "left": return "bottom-0.5 left-0.5";
+    case "right": return "bottom-0.5 right-0.5";
+    case "bottom": return "bottom-0.5 right-0.5";
     case "corner":
-    default:
-      return "bottom-0.5 right-0.5";
+    default: return "bottom-0.5 right-0.5";
   }
 }
 

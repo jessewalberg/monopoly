@@ -437,6 +437,14 @@ async function executeBuyPropertyHandler(
     await ctx.db.patch(property._id, { ownerId: args.playerId });
     await ctx.db.patch(args.playerId, { cash: player.cash - cost });
     await addEvent(`Decided to buy ${space.name} for $${cost}`);
+    await recordPropertyTransfer(ctx, {
+      gameId: args.gameId,
+      turnId: args.turnId,
+      propertyId: property._id,
+      fromOwnerId: undefined,
+      toOwnerId: args.playerId,
+      reason: "purchase",
+    });
   } else {
     await addEvent(`Declined to buy ${space.name} - starting auction`);
     await startAuctionFlow(ctx, {
@@ -825,9 +833,25 @@ async function executeTradeResponseHandler(
 
     for (const propId of trade.offerProperties) {
       await ctx.db.patch(propId, { ownerId: recipient._id });
+      await recordPropertyTransfer(ctx, {
+        gameId: args.gameId,
+        turnId: args.turnId,
+        propertyId: propId,
+        fromOwnerId: proposer._id,
+        toOwnerId: recipient._id,
+        reason: "trade",
+      });
     }
     for (const propId of trade.requestProperties) {
       await ctx.db.patch(propId, { ownerId: proposer._id });
+      await recordPropertyTransfer(ctx, {
+        gameId: args.gameId,
+        turnId: args.turnId,
+        propertyId: propId,
+        fromOwnerId: recipient._id,
+        toOwnerId: proposer._id,
+        reason: "trade",
+      });
     }
 
     await appendTurnEvent(
@@ -967,6 +991,14 @@ async function resolveAuction(
         args.turnId,
         `Auction: ${winner.modelDisplayName} won ${args.auctionContext.propertyName} for $${highestBid}`
       );
+      await recordPropertyTransfer(ctx, {
+        gameId: args.gameId,
+        turnId: args.turnId,
+        propertyId: property._id,
+        fromOwnerId: undefined,
+        toOwnerId: winnerId,
+        reason: "auction",
+      });
       await ctx.scheduler.runAfter(0, internal.statsAggregator.updateAuctionStats, {
         propertyName: args.auctionContext.propertyName,
         auctionPrice: highestBid,
@@ -1061,6 +1093,13 @@ async function applyBuildAction(
   if (housesBuilt > 0) {
     await ctx.db.patch(target._id, { houses: target.houses });
     await ctx.db.patch(player._id, { cash: remainingCash });
+    await recordPropertyStateEvent(ctx, {
+      gameId: args.gameId,
+      turnId: args.turnId,
+      propertyId: target._id,
+      houses: target.houses,
+      reason: "build",
+    });
     return {
       message: `Built ${housesBuilt} house(s) on ${target.name} for $${housesBuilt * houseCost}`,
     };
@@ -1104,6 +1143,13 @@ async function applyMortgageAction(
   const mortgageValue = getMortgageValue(property.position);
   await ctx.db.patch(property._id, { isMortgaged: true });
   await ctx.db.patch(player._id, { cash: player.cash + mortgageValue });
+  await recordPropertyStateEvent(ctx, {
+    gameId: args.gameId,
+    turnId: args.turnId,
+    propertyId: property._id,
+    isMortgaged: true,
+    reason: "mortgage",
+  });
 
   return { message: `Mortgaged ${property.name} for $${mortgageValue}` };
 }
@@ -1143,6 +1189,13 @@ async function applyUnmortgageAction(
   const unmortgageCost = getUnmortgageCost(property.position);
   await ctx.db.patch(property._id, { isMortgaged: false });
   await ctx.db.patch(player._id, { cash: player.cash - unmortgageCost });
+  await recordPropertyStateEvent(ctx, {
+    gameId: args.gameId,
+    turnId: args.turnId,
+    propertyId: property._id,
+    isMortgaged: false,
+    reason: "unmortgage",
+  });
 
   return { message: `Unmortgaged ${property.name} for $${unmortgageCost}` };
 }
@@ -1479,6 +1532,56 @@ async function appendTurnEvent(ctx: MutationCtx, turnId: Id<"turns">, event: str
       events: [...turn.events, event],
     });
   }
+}
+
+async function recordPropertyTransfer(
+  ctx: MutationCtx,
+  args: {
+    gameId: Id<"games">;
+    turnId: Id<"turns">;
+    propertyId: Id<"properties">;
+    fromOwnerId?: Id<"players">;
+    toOwnerId?: Id<"players">;
+    reason: string;
+  }
+) {
+  const turn = await ctx.db.get(args.turnId);
+  if (!turn) return;
+
+  await ctx.db.insert("propertyTransfers", {
+    gameId: args.gameId,
+    turnNumber: turn.turnNumber,
+    propertyId: args.propertyId,
+    fromOwnerId: args.fromOwnerId,
+    toOwnerId: args.toOwnerId,
+    reason: args.reason,
+    createdAt: Date.now(),
+  });
+}
+
+async function recordPropertyStateEvent(
+  ctx: MutationCtx,
+  args: {
+    gameId: Id<"games">;
+    turnId: Id<"turns">;
+    propertyId: Id<"properties">;
+    houses?: number;
+    isMortgaged?: boolean;
+    reason: string;
+  }
+) {
+  const turn = await ctx.db.get(args.turnId);
+  if (!turn) return;
+
+  await ctx.db.insert("propertyStateEvents", {
+    gameId: args.gameId,
+    turnNumber: turn.turnNumber,
+    propertyId: args.propertyId,
+    houses: args.houses,
+    isMortgaged: args.isMortgaged,
+    reason: args.reason,
+    createdAt: Date.now(),
+  });
 }
 
 function normalizeString(value: string): string {

@@ -185,6 +185,30 @@ export default defineSchema({
     receiverCashAfter: v.number(),
   }).index("by_game", ["gameId"]),
 
+  propertyTransfers: defineTable({
+    gameId: v.id("games"),
+    turnNumber: v.number(),
+    propertyId: v.id("properties"),
+    fromOwnerId: v.optional(v.id("players")),
+    toOwnerId: v.optional(v.id("players")),
+    reason: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_game", ["gameId"])
+    .index("by_game_turn", ["gameId", "turnNumber"]),
+
+  propertyStateEvents: defineTable({
+    gameId: v.id("games"),
+    turnNumber: v.number(),
+    propertyId: v.id("properties"),
+    houses: v.optional(v.number()),
+    isMortgaged: v.optional(v.boolean()),
+    reason: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_game", ["gameId"])
+    .index("by_game_turn", ["gameId", "turnNumber"]),
+
   // ============================================================
   // ANALYTICS AGGREGATES
   // ============================================================

@@ -1036,6 +1036,28 @@ async function handleBankruptcy(
       houses: creditorId ? prop.houses : 0,
       isMortgaged: creditorId ? prop.isMortgaged : false,
     });
+
+    await ctx.db.insert("propertyTransfers", {
+      gameId,
+      turnNumber: game.currentTurnNumber,
+      propertyId: prop._id,
+      fromOwnerId: playerId,
+      toOwnerId: creditorId,
+      reason: creditorId ? "bankruptcy" : "bankruptcy_bank",
+      createdAt: Date.now(),
+    });
+
+    if (!creditorId) {
+      await ctx.db.insert("propertyStateEvents", {
+        gameId,
+        turnNumber: game.currentTurnNumber,
+        propertyId: prop._id,
+        houses: 0,
+        isMortgaged: false,
+        reason: "bankruptcy_reset",
+        createdAt: Date.now(),
+      });
+    }
   }
 }
 
@@ -1296,6 +1318,16 @@ export const buyProperty = mutation({
     await ctx.db.patch(args.propertyId, { ownerId: args.playerId });
     await ctx.db.patch(args.playerId, { cash: player.cash - cost });
 
+    await ctx.db.insert("propertyTransfers", {
+      gameId: property.gameId,
+      turnNumber: game.currentTurnNumber,
+      propertyId: args.propertyId,
+      fromOwnerId: undefined,
+      toOwnerId: args.playerId,
+      reason: args.price ? "auction" : "purchase",
+      createdAt: Date.now(),
+    });
+
     return { propertyName: property.name, cost };
   },
 });
@@ -1335,6 +1367,16 @@ export const runAuction = mutation({
       if (winner) {
         await ctx.db.patch(args.propertyId, { ownerId: winnerId });
         await ctx.db.patch(winnerId, { cash: winner.cash - highestBid });
+
+        await ctx.db.insert("propertyTransfers", {
+          gameId: args.gameId,
+          turnNumber: game.currentTurnNumber,
+          propertyId: args.propertyId,
+          fromOwnerId: undefined,
+          toOwnerId: winnerId,
+          reason: "auction",
+          createdAt: Date.now(),
+        });
       }
     }
 

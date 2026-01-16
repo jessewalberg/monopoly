@@ -180,6 +180,28 @@ export interface RentPayment {
   receiverCashAfter: number;
 }
 
+export interface PropertyTransfer {
+  _id: Id<"propertyTransfers">;
+  gameId: Id<"games">;
+  turnNumber: number;
+  propertyId: Id<"properties">;
+  fromOwnerId?: Id<"players">;
+  toOwnerId?: Id<"players">;
+  reason: string;
+  createdAt: number;
+}
+
+export interface PropertyStateEvent {
+  _id: Id<"propertyStateEvents">;
+  gameId: Id<"games">;
+  turnNumber: number;
+  propertyId: Id<"properties">;
+  houses?: number;
+  isMortgaged?: boolean;
+  reason: string;
+  createdAt: number;
+}
+
 // ============================================================
 // ANALYTICS AGGREGATES
 // ============================================================

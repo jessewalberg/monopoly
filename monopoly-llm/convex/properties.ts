@@ -222,6 +222,19 @@ export const transfer = mutation({
     await ctx.db.patch(args.propertyId, {
       ownerId: args.toPlayerId,
     });
+
+    const game = await ctx.db.get(property.gameId);
+    if (game) {
+      await ctx.db.insert("propertyTransfers", {
+        gameId: property.gameId,
+        turnNumber: game.currentTurnNumber,
+        propertyId: args.propertyId,
+        fromOwnerId: args.fromPlayerId,
+        toOwnerId: args.toPlayerId,
+        reason: "transfer",
+        createdAt: Date.now(),
+      });
+    }
   },
 });
 
@@ -234,6 +247,8 @@ export const transferAll = mutation({
     toPlayerId: v.optional(v.id("players")), // undefined = return to bank
   },
   handler: async (ctx, args) => {
+    const player = await ctx.db.get(args.fromPlayerId);
+    const game = player ? await ctx.db.get(player.gameId) : null;
     const properties = await ctx.db
       .query("properties")
       .withIndex("by_owner", (q) => q.eq("ownerId", args.fromPlayerId))
@@ -247,6 +262,30 @@ export const transferAll = mutation({
           ? { isMortgaged: false, houses: 0 }
           : {}),
       });
+
+      if (game) {
+        await ctx.db.insert("propertyTransfers", {
+          gameId: game._id,
+          turnNumber: game.currentTurnNumber,
+          propertyId: property._id,
+          fromOwnerId: args.fromPlayerId,
+          toOwnerId: args.toPlayerId,
+          reason: "transfer",
+          createdAt: Date.now(),
+        });
+      }
+
+      if (game && args.toPlayerId === undefined) {
+        await ctx.db.insert("propertyStateEvents", {
+          gameId: game._id,
+          turnNumber: game.currentTurnNumber,
+          propertyId: property._id,
+          houses: 0,
+          isMortgaged: false,
+          reason: "transfer_reset",
+          createdAt: Date.now(),
+        });
+      }
     }
 
     return properties.length;

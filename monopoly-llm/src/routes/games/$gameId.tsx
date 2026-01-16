@@ -38,6 +38,16 @@ function GameReplayPage() {
     convexQuery(api.turns.getByGame, { gameId: typedGameId })
   );
 
+  // Get property transfer history
+  const { data: propertyTransfers } = useSuspenseQuery(
+    convexQuery(api.propertyTransfers.getByGame, { gameId: typedGameId })
+  );
+
+  // Get property state history (houses/mortgage)
+  const { data: propertyStateEvents } = useSuspenseQuery(
+    convexQuery(api.propertyStateEvents.getByGame, { gameId: typedGameId })
+  );
+
   if (!gameState) {
     return (
       <div className="p-8 text-center">
@@ -74,11 +84,48 @@ function GameReplayPage() {
     inJail: p.inJail,
   }));
 
+  const transfersUpToTurn = (propertyTransfers ?? [])
+    .filter((t: { turnNumber: number }) => t.turnNumber <= selectedTurn)
+    .sort(
+      (a: { turnNumber: number; createdAt: number }, b: { turnNumber: number; createdAt: number }) =>
+        a.turnNumber - b.turnNumber || a.createdAt - b.createdAt
+    );
+
+  const ownerByPropertyId = new Map<Id<"properties">, Id<"players"> | undefined>();
+  for (const transfer of transfersUpToTurn) {
+    ownerByPropertyId.set(transfer.propertyId, transfer.toOwnerId);
+  }
+
+  const stateEventsUpToTurn = (propertyStateEvents ?? [])
+    .filter((event: { turnNumber: number }) => event.turnNumber <= selectedTurn)
+    .sort(
+      (
+        a: { turnNumber: number; createdAt: number },
+        b: { turnNumber: number; createdAt: number }
+      ) => a.turnNumber - b.turnNumber || a.createdAt - b.createdAt
+    );
+
+  const stateByPropertyId = new Map<
+    Id<"properties">,
+    { houses: number; isMortgaged: boolean }
+  >();
+
+  for (const event of stateEventsUpToTurn) {
+    const prev = stateByPropertyId.get(event.propertyId) ?? {
+      houses: 0,
+      isMortgaged: false,
+    };
+    stateByPropertyId.set(event.propertyId, {
+      houses: event.houses ?? prev.houses,
+      isMortgaged: event.isMortgaged ?? prev.isMortgaged,
+    });
+  }
+
   const boardProperties = properties.map((prop) => ({
     position: prop.position,
-    ownerId: prop.ownerId,
-    houses: prop.houses,
-    isMortgaged: prop.isMortgaged,
+    ownerId: ownerByPropertyId.get(prop._id) ?? undefined,
+    houses: stateByPropertyId.get(prop._id)?.houses ?? 0,
+    isMortgaged: stateByPropertyId.get(prop._id)?.isMortgaged ?? false,
   }));
 
   return (

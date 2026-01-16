@@ -148,7 +148,7 @@ export function Board({
                 gridRow: row,
                 gridColumn: col,
               }}
-              className="relative border border-slate-800/30"
+              className="relative border border-slate-800/30 overflow-visible"
             >
               <BoardSpaceComponent
                 space={space}
