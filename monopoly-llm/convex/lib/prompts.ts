@@ -98,7 +98,7 @@ export function buildDecisionPrompt(
       prompt += buildJailStrategyPrompt(currentPlayer, validActions);
       break;
     case "pre_roll_actions":
-      prompt += buildPreRollPrompt(currentPlayer, properties, validActions);
+      prompt += buildPreRollPrompt(currentPlayer, properties, validActions, otherPlayers);
       break;
     case "post_roll_actions":
       prompt += buildPostRollPrompt(currentPlayer, properties, validActions);
@@ -262,9 +262,10 @@ function buildJailStrategyPrompt(
 }
 
 function buildPreRollPrompt(
-  _player: PlayerInfo,
-  _properties: PropertyInfo[],
-  validActions: string[]
+  player: PlayerInfo,
+  properties: PropertyInfo[],
+  validActions: string[],
+  otherPlayers?: PlayerInfo[]
 ): string {
   let prompt = `=== DECISION: PRE-ROLL ACTIONS ===\n`;
   prompt += `Before you roll, you may:\n\n`;
@@ -282,6 +283,31 @@ function buildPreRollPrompt(
     prompt += `- "trade": Propose a trade with another player\n`;
   }
   prompt += `- "done": Finish pre-roll actions and roll the dice\n\n`;
+
+  // Add trading information if trade is a valid action
+  if (validActions.includes("trade") && otherPlayers) {
+    prompt += `=== TRADING INFO ===\n`;
+    prompt += `Your properties you can offer:\n`;
+    const yourProps = properties.filter((p) => p.ownerId === player._id && !p.isMortgaged);
+    if (yourProps.length > 0) {
+      prompt += yourProps.map((p) => `  - ${p.name} (${p.group})`).join("\n") + "\n";
+    } else {
+      prompt += `  (none)\n`;
+    }
+
+    prompt += `\nOpponents and their properties:\n`;
+    for (const opponent of otherPlayers) {
+      if (opponent.isBankrupt) continue;
+      const theirProps = properties.filter((p) => p.ownerId === opponent._id && !p.isMortgaged);
+      prompt += `${opponent.modelDisplayName}:\n`;
+      if (theirProps.length > 0) {
+        prompt += theirProps.map((p) => `  - ${p.name} (${p.group})`).join("\n") + "\n";
+      } else {
+        prompt += `  (no properties)\n`;
+      }
+    }
+    prompt += `\n`;
+  }
 
   prompt += `Respond with: { "action": "<choice>", "parameters": { ... }, "reasoning": "..." }\n`;
   prompt += `For "build": parameters: { "propertyName": "...", "count": 1 }\n`;

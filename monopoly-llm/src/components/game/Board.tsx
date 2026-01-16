@@ -126,7 +126,7 @@ export function Board({
   }
 
   return (
-    <div className="relative w-full max-w-3xl aspect-square rounded-lg overflow-hidden border-2 border-slate-700" style={{ backgroundColor: "#C8E6C9" }}>
+    <div className="relative w-full max-w-2xl aspect-square rounded-lg overflow-hidden border-2 border-slate-700" style={{ backgroundColor: "#C8E6C9" }}>
       {/* CSS Grid for board spaces */}
       <div
         className="grid h-full"
