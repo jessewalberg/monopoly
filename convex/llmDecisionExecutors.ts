@@ -633,6 +633,18 @@ async function executePrePostRollHandler(
     if (tradeStarted) {
       return;
     }
+    // If trade failed or was skipped (e.g., limit reached), advance the phase
+    // to prevent infinite loops where the LLM keeps trying to trade
+    const turn = await ctx.db.get(args.turnId);
+    if (args.phase === "pre_roll_actions") {
+      nextPhase = "rolling";
+    } else {
+      if (turn?.wasDoubles && !player.inJail) {
+        nextPhase = "rolling";
+      } else {
+        nextPhase = "turn_end";
+      }
+    }
   }
 
   await ctx.db.patch(args.gameId, {
@@ -885,7 +897,32 @@ async function executeTradeResponseHandler(
     );
   }
 
-  await clearWaitingHandler(ctx, { gameId: args.gameId });
+  // After a trade response (accept/reject), advance the phase to prevent trade loops
+  // The proposer initiated the trade during their pre_roll or post_roll phase
+  // After the trade is resolved, we should move their turn forward
+  const turn = await ctx.db.get(args.turnId);
+  const currentPlayer = turn ? await ctx.db.get(turn.playerId) : null;
+
+  let nextPhase = game.currentPhase;
+  if (game.currentPhase === "pre_roll") {
+    nextPhase = "rolling";
+  } else if (game.currentPhase === "post_roll") {
+    if (turn?.wasDoubles && currentPlayer && !currentPlayer.inJail) {
+      nextPhase = "rolling";
+    } else {
+      nextPhase = "turn_end";
+    }
+  }
+
+  await ctx.db.patch(args.gameId, {
+    waitingForLLM: false,
+    pendingDecision: undefined,
+    currentPhase: nextPhase,
+  });
+
+  await ctx.scheduler.runAfter(game.config.speedMs, internal.gameEngine.processTurnStep, {
+    gameId: args.gameId,
+  });
 }
 
 type AuctionContext = {
@@ -1361,6 +1398,28 @@ async function createCounterOffer(
     allProperties: Array<Doc<"properties">>;
   }
 ): Promise<{ started: boolean }> {
+  // Check trade attempt limit to prevent infinite loops
+  // Counter offers also count against the per-turn trade limit
+  const turn = await ctx.db.get(args.turnId);
+  if (!turn) return { started: false };
+
+  const currentAttempts = turn.tradeAttempts ?? 0;
+  if (currentAttempts >= MAX_TRADE_ATTEMPTS_PER_TURN) {
+    await ctx.db.patch(args.originalTradeId, {
+      status: "rejected",
+      recipientReasoning: args.reasoning || "Trade limit reached for this turn",
+    });
+    await appendTurnEvent(
+      ctx,
+      args.turnId,
+      `Trade rejected: reached limit of ${MAX_TRADE_ATTEMPTS_PER_TURN} trade attempts per turn`
+    );
+    return { started: false };
+  }
+
+  // Increment trade attempts for counter offers too
+  await ctx.db.patch(args.turnId, { tradeAttempts: currentAttempts + 1 });
+
   const originalTrade = await ctx.db.get(args.originalTradeId);
   const currentDepth = originalTrade?.counterDepth ?? 0;
   const maxDepth = 3;
