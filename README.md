@@ -311,5 +311,3 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - [OpenRouter](https://openrouter.ai) for unified LLM access
 - [TanStack](https://tanstack.com) for React tooling
 - Monopoly is a trademark of Hasbro
-
----
