@@ -9,6 +9,9 @@
     "dev:ts": "tsc -b -w",
     "dev:convex": "npx convex dev",
     "build": "npx convex codegen && vite build && tsc --noEmit",
+    "deploy": "pnpm run build && wrangler deploy",
+    "preview": "pnpm run build && vite preview",
+    "cf-typegen": "wrangler types",
     "start": "node .output/server/index.mjs",
     "format": "prettier --write .",
     "lint": "tsc && eslint .  --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
@@ -16,6 +19,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@cloudflare/vite-plugin": "^1.21.0",
     "@convex-dev/react-query": "^0.0.0-alpha.11",
     "@tanstack/react-query": "^5.89.0",
     "@tanstack/react-router": "^1.132.2",
@@ -43,7 +47,8 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.5",
     "vite-tsconfig-paths": "^6.0.1",
-    "vitest": "^4.0.17"
+    "vitest": "^4.0.17",
+    "wrangler": "^4.59.2"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
