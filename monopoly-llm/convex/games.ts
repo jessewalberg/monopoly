@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, internalMutation } from "./_generated/server";
 
 // ============================================================
 // QUERIES
@@ -105,7 +105,7 @@ export const getFullState = query({
 /**
  * Create a new game in "setup" status
  */
-export const create = mutation({
+export const create = internalMutation({
   args: {
     config: v.object({
       turnLimit: v.optional(v.number()),
@@ -130,7 +130,7 @@ export const create = mutation({
 /**
  * Update game status
  */
-export const updateStatus = mutation({
+export const updateStatus = internalMutation({
   args: {
     gameId: v.id("games"),
     status: v.union(
@@ -159,7 +159,7 @@ export const updateStatus = mutation({
 /**
  * Set the winner of a game
  */
-export const setWinner = mutation({
+export const setWinner = internalMutation({
   args: {
     gameId: v.id("games"),
     winnerId: v.id("players"),
@@ -184,7 +184,7 @@ export const setWinner = mutation({
 /**
  * Update the current game phase
  */
-export const updatePhase = mutation({
+export const updatePhase = internalMutation({
   args: {
     gameId: v.id("games"),
     phase: v.union(
@@ -205,7 +205,7 @@ export const updatePhase = mutation({
 /**
  * Advance to the next player's turn
  */
-export const advanceTurn = mutation({
+export const advanceTurn = internalMutation({
   args: {
     gameId: v.id("games"),
   },

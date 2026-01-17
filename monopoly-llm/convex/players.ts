@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, internalMutation } from "./_generated/server";
 
 // ============================================================
 // QUERIES
@@ -68,13 +68,14 @@ export const getCurrent = query({
 /**
  * Create a new player for a game
  */
-export const create = mutation({
+export const create = internalMutation({
   args: {
     gameId: v.id("games"),
     modelId: v.string(),
     modelDisplayName: v.string(),
     modelProvider: v.string(),
     tokenColor: v.string(),
+    textColor: v.optional(v.string()),
     turnOrder: v.number(),
   },
   handler: async (ctx, args) => {
@@ -88,6 +89,7 @@ export const create = mutation({
       modelDisplayName: args.modelDisplayName,
       modelProvider: args.modelProvider,
       tokenColor: args.tokenColor,
+      textColor: args.textColor ?? "#FFFFFF",
       turnOrder: args.turnOrder,
       // Initial state
       cash: game.config.startingMoney,
@@ -106,7 +108,7 @@ export const create = mutation({
 /**
  * Update player's cash (add or subtract)
  */
-export const updateCash = mutation({
+export const updateCash = internalMutation({
   args: {
     playerId: v.id("players"),
     amount: v.number(), // Positive to add, negative to subtract
@@ -125,7 +127,7 @@ export const updateCash = mutation({
 /**
  * Set player's cash to a specific amount
  */
-export const setCash = mutation({
+export const setCash = internalMutation({
   args: {
     playerId: v.id("players"),
     cash: v.number(),
@@ -138,7 +140,7 @@ export const setCash = mutation({
 /**
  * Update player's position on the board
  */
-export const updatePosition = mutation({
+export const updatePosition = internalMutation({
   args: {
     playerId: v.id("players"),
     position: v.number(),
@@ -153,7 +155,7 @@ export const updatePosition = mutation({
 /**
  * Set player's jail status
  */
-export const setJailStatus = mutation({
+export const setJailStatus = internalMutation({
   args: {
     playerId: v.id("players"),
     inJail: v.boolean(),
@@ -170,7 +172,7 @@ export const setJailStatus = mutation({
 /**
  * Mark a player as bankrupt
  */
-export const setBankrupt = mutation({
+export const setBankrupt = internalMutation({
   args: {
     playerId: v.id("players"),
     turn: v.number(),
@@ -192,7 +194,7 @@ export const setBankrupt = mutation({
 /**
  * Update consecutive doubles count
  */
-export const updateDoubles = mutation({
+export const updateDoubles = internalMutation({
   args: {
     playerId: v.id("players"),
     count: v.number(),
@@ -207,7 +209,7 @@ export const updateDoubles = mutation({
 /**
  * Add a Get Out of Jail Free card
  */
-export const addJailCard = mutation({
+export const addJailCard = internalMutation({
   args: {
     playerId: v.id("players"),
   },
@@ -224,7 +226,7 @@ export const addJailCard = mutation({
 /**
  * Use a Get Out of Jail Free card
  */
-export const useJailCard = mutation({
+export const useJailCard = internalMutation({
   args: {
     playerId: v.id("players"),
   },
@@ -246,7 +248,7 @@ export const useJailCard = mutation({
 /**
  * Set final stats when game ends
  */
-export const setFinalStats = mutation({
+export const setFinalStats = internalMutation({
   args: {
     playerId: v.id("players"),
     finalPosition: v.number(),

@@ -2,6 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "../../convex/_generated/api";
+import { useState, useEffect } from "react";
 
 // ============================================================
 // ROUTE DEFINITION
@@ -12,10 +13,39 @@ export const Route = createFileRoute("/")({
 });
 
 // ============================================================
+// COUNTDOWN HOOK
+// ============================================================
+
+function useNextHourCountdown() {
+  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextHour());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft(getTimeToNextHour());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return timeLeft;
+}
+
+function getTimeToNextHour(): { minutes: number; seconds: number } {
+  const now = new Date();
+  const nextHour = new Date(now);
+  nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
+  const diff = nextHour.getTime() - now.getTime();
+  return {
+    minutes: Math.floor(diff / 60000),
+    seconds: Math.floor((diff % 60000) / 1000),
+  };
+}
+
+// ============================================================
 // HOME PAGE
 // ============================================================
 
 function HomePage() {
+  const countdown = useNextHourCountdown();
   const { data: recentGames } = useSuspenseQuery(
     convexQuery(api.games.list, { limit: 5 })
   );
@@ -32,26 +62,45 @@ function HomePage() {
           LLM Monopoly Arena
         </h1>
         <p className="text-lg sm:text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-          Watch AI models battle for Boardwalk - Claude, GPT, Gemini, and more
-          compete in real-time Monopoly matches
+          Watch AI models battle for Boardwalk - automated hourly matches between
+          Claude, GPT, Gemini, and Grok
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link
-            to="/play"
-            className="bg-green-600 hover:bg-green-700 text-white text-center py-4 px-8 rounded-lg font-bold text-xl transition-colors shadow-lg shadow-green-600/20"
-          >
-            Start New Game
-          </Link>
-          {inProgressGames.length > 0 && (
+
+        {/* Active Game or Countdown */}
+        {inProgressGames.length > 0 ? (
+          <div className="mb-8">
+            <div className="inline-flex items-center gap-2 bg-green-600/20 border border-green-500 rounded-lg px-4 py-2 mb-4">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+              </span>
+              <span className="text-green-400 font-medium">Game In Progress</span>
+            </div>
+            <div>
+              <Link
+                to="/play/$gameId"
+                params={{ gameId: inProgressGames[0]._id }}
+                className="bg-green-600 hover:bg-green-700 text-white text-center py-4 px-8 rounded-lg font-bold text-xl transition-colors shadow-lg shadow-green-600/20"
+              >
+                Watch Live Game
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-8">
+            <div className="text-slate-400 mb-2">Next game in</div>
+            <div className="text-5xl font-bold text-green-400 font-mono mb-4">
+              {String(countdown.minutes).padStart(2, "0")}:
+              {String(countdown.seconds).padStart(2, "0")}
+            </div>
             <Link
-              to="/play/$gameId"
-              params={{ gameId: inProgressGames[0]._id }}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-center py-4 px-8 rounded-lg font-bold text-xl transition-colors"
+              to="/play"
+              className="bg-slate-700 hover:bg-slate-600 text-white text-center py-4 px-8 rounded-lg font-bold text-xl transition-colors"
             >
-              Watch Live Game
+              View Arena Mode
             </Link>
-          )}
-        </div>
+          </div>
+        )}
       </section>
 
       {/* Quick Stats */}
@@ -106,27 +155,27 @@ function HomePage() {
 
         {/* How It Works */}
         <div className="bg-slate-800 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-white mb-4">How It Works</h2>
+          <h2 className="text-xl font-bold text-white mb-4">How Arena Mode Works</h2>
           <div className="space-y-4">
             <StepCard
               number={1}
-              title="Select AI Models"
-              description="Choose from Claude, GPT, Gemini, Llama, Mistral, and more to compete."
+              title="Hourly Games"
+              description="A new game starts automatically every hour on the hour."
             />
             <StepCard
               number={2}
-              title="Configure Game"
-              description="Set game speed, turn limits, and starting money."
+              title="Budget Models Compete"
+              description="5 budget-tier models battle: GPT-4o Mini, Gemini Flash, Claude Haiku, and more."
             />
             <StepCard
               number={3}
-              title="Watch & Analyze"
-              description="See real-time decisions, trades, and property strategies."
+              title="Watch Live"
+              description="See real-time decisions, trades, and property strategies as they happen."
             />
             <StepCard
               number={4}
-              title="Review Results"
-              description="Explore analytics, head-to-head stats, and replay key moments."
+              title="Review & Analyze"
+              description="Explore analytics, head-to-head stats, and replay past games."
             />
           </div>
         </div>
@@ -137,8 +186,8 @@ function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <QuickLinkCard
             to="/play"
-            title="New Game"
-            description="Start a fresh match"
+            title="Arena"
+            description="Watch live games"
             icon="🎲"
             color="green"
           />

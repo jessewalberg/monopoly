@@ -1309,6 +1309,9 @@ export const buyProperty = mutation({
       throw new Error("Property already owned");
     }
 
+    const game = await ctx.db.get(property.gameId);
+    if (!game) throw new Error("Game not found");
+
     const cost = args.price ?? getPurchasePrice(property.position);
 
     if (player.cash < cost) {
@@ -1349,6 +1352,9 @@ export const runAuction = mutation({
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.ownerId) throw new Error("Property already owned");
+
+    const game = await ctx.db.get(args.gameId);
+    if (!game) throw new Error("Game not found");
 
     // Find highest valid bid
     let highestBid = 0;

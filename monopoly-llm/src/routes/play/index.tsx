@@ -1,356 +1,238 @@
-import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
-import { useConvexMutation } from "@convex-dev/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
 import { api } from "../../../convex/_generated/api";
-import {
-  PlayersListConfigurator,
-  generateInitialPlayers,
-  type PlayerConfig,
-} from "../../components/setup/PlayerConfigurator";
-import { GameSettings, type GameSettingsConfig } from "../../components/setup/GameSettings";
+import { Card, CardBody, CardHeader } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Card, CardBody, CardHeader, CardFooter } from "../../components/ui/Card";
-import { getModelById, TOKEN_COLORS, DEFAULT_GAME_CONFIG } from "../../lib/models";
+import { Badge } from "../../components/ui/Badge";
+import { useEffect, useState } from "react";
 
 // ============================================================
 // ROUTE DEFINITION
 // ============================================================
 
 export const Route = createFileRoute("/play/")({
-  component: GameSetupPage,
+  component: ArenaModePage,
 });
 
 // ============================================================
-// TYPES
+// BUDGET MODELS (for display only)
 // ============================================================
 
-type SetupStep = "players" | "settings" | "review";
+const BUDGET_MODELS = [
+  { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: "OpenAI" },
+  { id: "google/gemini-2.0-flash-001", name: "Gemini 2.0 Flash", provider: "Google" },
+  { id: "google/gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite", provider: "Google" },
+  { id: "anthropic/claude-3.5-haiku", name: "Claude 3.5 Haiku", provider: "Anthropic" },
+  { id: "x-ai/grok-3-mini", name: "Grok 3 Mini", provider: "xAI" },
+];
 
 // ============================================================
-// GAME SETUP PAGE
+// COUNTDOWN HOOK
 // ============================================================
 
-function GameSetupPage() {
+function useNextHourCountdown() {
+  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextHour());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft(getTimeToNextHour());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return timeLeft;
+}
+
+function getTimeToNextHour(): { minutes: number; seconds: number } {
+  const now = new Date();
+  const nextHour = new Date(now);
+  nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
+  const diff = nextHour.getTime() - now.getTime();
+  return {
+    minutes: Math.floor(diff / 60000),
+    seconds: Math.floor((diff % 60000) / 1000),
+  };
+}
+
+// ============================================================
+// ARENA MODE PAGE
+// ============================================================
+
+function ArenaModePage() {
   const navigate = useNavigate();
+  const countdown = useNextHourCountdown();
 
-  // Setup state
-  const [step, setStep] = useState<SetupStep>("players");
-  const [players, setPlayers] = useState<PlayerConfig[]>(() =>
-    generateInitialPlayers(2)
+  // Check for active games
+  const { data: games } = useSuspenseQuery(
+    convexQuery(api.games.list, { limit: 10 })
   );
-  const [settings, setSettings] = useState<GameSettingsConfig>({
-    speedMs: DEFAULT_GAME_CONFIG.speedMs,
-    turnLimit: DEFAULT_GAME_CONFIG.turnLimit,
-    startingMoney: DEFAULT_GAME_CONFIG.startingMoney,
-  });
 
-  // Mutations
-  const createGame = useMutation({
-    mutationFn: useConvexMutation(api.games.create),
-  });
-  const createPlayer = useMutation({
-    mutationFn: useConvexMutation(api.players.create),
-  });
-  const startGame = useMutation({
-    mutationFn: useConvexMutation(api.gameEngine.startGame),
-  });
+  const activeGame = games?.find((g) => g.status === "in_progress");
+  const recentGames = games?.filter((g) => g.status === "completed").slice(0, 5) ?? [];
 
-  const [isStarting, setIsStarting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Validation
-  const isPlayersValid = players.length >= 2 && players.every((p) => p.modelId);
-
-  // Handle game start
-  const handleStartGame = async () => {
-    setIsStarting(true);
-    setError(null);
-
-    try {
-      // 1. Create the game
-      const gameId = await createGame.mutateAsync({
-        config: {
-          speedMs: settings.speedMs,
-          turnLimit: settings.turnLimit || undefined,
-          startingMoney: settings.startingMoney,
-        },
-      });
-
-      // 2. Create each player
-      for (let i = 0; i < players.length; i++) {
-        const player = players[i];
-        const model = getModelById(player.modelId);
-        const color = TOKEN_COLORS[player.tokenColorIndex];
-
-        await createPlayer.mutateAsync({
-          gameId,
-          modelId: player.modelId,
-          modelDisplayName: player.displayName || model?.name || "Player",
-          modelProvider: model?.provider || "Unknown",
-          tokenColor: color.hex,
-          turnOrder: i,
-        });
-      }
-
-      // 3. Start the game
-      await startGame.mutateAsync({ gameId });
-
-      // 4. Navigate to the game
-      navigate({ to: `/play/${gameId}` });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start game");
-      setIsStarting(false);
+  // Auto-redirect to active game
+  useEffect(() => {
+    if (activeGame) {
+      navigate({ to: "/play/$gameId", params: { gameId: activeGame._id } });
     }
-  };
-
-  // Step navigation
-  const canProceed = () => {
-    switch (step) {
-      case "players":
-        return isPlayersValid;
-      case "settings":
-        return true;
-      case "review":
-        return true;
-      default:
-        return false;
-    }
-  };
-
-  const handleNext = () => {
-    if (step === "players") setStep("settings");
-    else if (step === "settings") setStep("review");
-  };
-
-  const handleBack = () => {
-    if (step === "settings") setStep("players");
-    else if (step === "review") setStep("settings");
-  };
+  }, [activeGame, navigate]);
 
   return (
     <div className="p-4 sm:p-8 max-w-4xl mx-auto">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">New Game Setup</h1>
-        <p className="text-slate-400">Configure your AI Monopoly match</p>
+        <h1 className="text-3xl font-bold text-white mb-2">Arena Mode</h1>
+        <p className="text-slate-400">
+          Automated hourly battles between budget AI models
+        </p>
       </div>
 
-      {/* Progress Steps */}
-      <div className="flex items-center justify-center mb-8">
-        <StepIndicator
-          step={1}
-          label="Players"
-          isActive={step === "players"}
-          isComplete={step !== "players"}
-        />
-        <StepConnector isComplete={step !== "players"} />
-        <StepIndicator
-          step={2}
-          label="Settings"
-          isActive={step === "settings"}
-          isComplete={step === "review"}
-        />
-        <StepConnector isComplete={step === "review"} />
-        <StepIndicator
-          step={3}
-          label="Review"
-          isActive={step === "review"}
-          isComplete={false}
-        />
-      </div>
-
-      {/* Step Content */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-xl font-bold text-white">
-            {step === "players" && "Select AI Players"}
-            {step === "settings" && "Game Settings"}
-            {step === "review" && "Review & Start"}
-          </h2>
-        </CardHeader>
-
-        <CardBody>
-          {step === "players" && (
-            <div className="space-y-4">
-              <p className="text-slate-400 mb-4">
-                Add 2-8 AI players to compete. Each player needs a unique model and color.
-              </p>
-              <PlayersListConfigurator
-                players={players}
-                onChange={setPlayers}
-                minPlayers={2}
-                maxPlayers={8}
-              />
+      {/* Active Game Status */}
+      {activeGame ? (
+        <Card className="mb-8 border-green-500">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+              </span>
+              <h2 className="text-xl font-bold text-white">Game In Progress</h2>
             </div>
-          )}
-
-          {step === "settings" && (
-            <div className="space-y-4">
-              <p className="text-slate-400 mb-4">
-                Configure how the game will be played.
-              </p>
-              <GameSettings
-                config={settings}
-                onChange={setSettings}
-              />
-            </div>
-          )}
-
-          {step === "review" && (
-            <div className="space-y-6">
-              {/* Players Summary */}
-              <div>
-                <h3 className="text-lg font-medium text-white mb-3">Players</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {players.map((player, idx) => {
-                    const model = getModelById(player.modelId);
-                    const color = TOKEN_COLORS[player.tokenColorIndex];
-                    return (
-                      <div
-                        key={player.id}
-                        className="flex items-center gap-3 bg-slate-700 rounded-lg p-3"
-                      >
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center font-bold"
-                          style={{
-                            backgroundColor: color.hex,
-                            color: color.textColor,
-                          }}
-                        >
-                          {idx + 1}
-                        </div>
-                        <div>
-                          <div className="text-white font-medium">
-                            {player.displayName || model?.name || "Unknown"}
-                          </div>
-                          <div className="text-sm text-slate-400">
-                            {model?.provider || "Unknown"}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Settings Summary */}
-              <div>
-                <h3 className="text-lg font-medium text-white mb-3">Settings</h3>
-                <div className="bg-slate-700 rounded-lg p-4 grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-bold text-white">
-                      {settings.speedMs >= 1000
-                        ? `${settings.speedMs / 1000}s`
-                        : `${settings.speedMs}ms`}
-                    </div>
-                    <div className="text-sm text-slate-400">Turn Speed</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-white">
-                      {settings.turnLimit || "∞"}
-                    </div>
-                    <div className="text-sm text-slate-400">Turn Limit</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-white">
-                      ${settings.startingMoney}
-                    </div>
-                    <div className="text-sm text-slate-400">Starting Cash</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Error message */}
-              {error && (
-                <div className="bg-red-900/50 border border-red-500 text-red-200 rounded-lg p-4">
-                  {error}
-                </div>
-              )}
-            </div>
-          )}
-        </CardBody>
-
-        <CardFooter>
-          <div className="flex justify-between w-full">
+          </CardHeader>
+          <CardBody>
+            <p className="text-slate-300 mb-4">
+              A game is currently running. Watch the AI models battle it out!
+            </p>
             <Button
-              variant="secondary"
-              onClick={handleBack}
-              disabled={step === "players"}
+              variant="primary"
+              onClick={() => navigate({ to: "/play/$gameId", params: { gameId: activeGame._id } })}
             >
-              Back
+              Watch Live Game
             </Button>
+          </CardBody>
+        </Card>
+      ) : (
+        <Card className="mb-8">
+          <CardHeader>
+            <h2 className="text-xl font-bold text-white">Next Game</h2>
+          </CardHeader>
+          <CardBody>
+            <div className="text-center py-6">
+              <div className="text-6xl font-bold text-green-400 mb-2 font-mono">
+                {String(countdown.minutes).padStart(2, "0")}:
+                {String(countdown.seconds).padStart(2, "0")}
+              </div>
+              <p className="text-slate-400">until next scheduled game</p>
+            </div>
+            <p className="text-sm text-slate-500 text-center">
+              Games run automatically every hour on the hour
+            </p>
+          </CardBody>
+        </Card>
+      )}
 
-            {step === "review" ? (
-              <Button
-                variant="primary"
-                onClick={handleStartGame}
-                loading={isStarting}
-                disabled={isStarting}
+      {/* Competing Models */}
+      <Card className="mb-8">
+        <CardHeader>
+          <h2 className="text-xl font-bold text-white">Competing Models</h2>
+        </CardHeader>
+        <CardBody>
+          <p className="text-slate-400 mb-4">
+            All 5 budget-tier models compete in each game with randomized turn order:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {BUDGET_MODELS.map((model) => (
+              <div
+                key={model.id}
+                className="bg-slate-700 rounded-lg p-3 flex items-center gap-3"
               >
-                {isStarting ? "Starting..." : "Start Game"}
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                onClick={handleNext}
-                disabled={!canProceed()}
-              >
-                Next
-              </Button>
-            )}
+                <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center text-lg">
+                  {model.provider === "OpenAI" && "O"}
+                  {model.provider === "Google" && "G"}
+                  {model.provider === "Anthropic" && "A"}
+                  {model.provider === "xAI" && "X"}
+                </div>
+                <div>
+                  <div className="text-white font-medium text-sm">
+                    {model.name}
+                  </div>
+                  <div className="text-xs text-slate-400">{model.provider}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        </CardFooter>
+        </CardBody>
       </Card>
+
+      {/* Game Rules */}
+      <Card className="mb-8">
+        <CardHeader>
+          <h2 className="text-xl font-bold text-white">Game Rules</h2>
+        </CardHeader>
+        <CardBody>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <div className="bg-slate-700 rounded-lg p-4">
+              <div className="text-2xl font-bold text-white">5</div>
+              <div className="text-sm text-slate-400">Players</div>
+            </div>
+            <div className="bg-slate-700 rounded-lg p-4">
+              <div className="text-2xl font-bold text-white">2s</div>
+              <div className="text-sm text-slate-400">Turn Speed</div>
+            </div>
+            <div className="bg-slate-700 rounded-lg p-4">
+              <div className="text-2xl font-bold text-white">200</div>
+              <div className="text-sm text-slate-400">Turn Limit</div>
+            </div>
+          </div>
+          <p className="text-slate-400 text-sm mt-4 text-center">
+            Standard Monopoly rules with $1,500 starting cash
+          </p>
+        </CardBody>
+      </Card>
+
+      {/* Recent Games */}
+      {recentGames.length > 0 && (
+        <Card>
+          <CardHeader>
+            <h2 className="text-xl font-bold text-white">Recent Games</h2>
+          </CardHeader>
+          <CardBody>
+            <div className="space-y-3">
+              {recentGames.map((game) => (
+                <Link
+                  key={game._id}
+                  to="/games/$gameId"
+                  params={{ gameId: game._id }}
+                  className="block bg-slate-700 hover:bg-slate-600 rounded-lg p-4 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-white font-medium">
+                        Game #{game._id.slice(-6)}
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        {game.currentTurnNumber} turns
+                      </div>
+                    </div>
+                    <Badge variant="success" size="sm">
+                      Completed
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-4 text-center">
+              <Link
+                to="/games"
+                className="text-green-400 hover:text-green-300 text-sm"
+              >
+                View all game history
+              </Link>
+            </div>
+          </CardBody>
+        </Card>
+      )}
     </div>
-  );
-}
-
-// ============================================================
-// HELPER COMPONENTS
-// ============================================================
-
-function StepIndicator({
-  step,
-  label,
-  isActive,
-  isComplete,
-}: {
-  step: number;
-  label: string;
-  isActive: boolean;
-  isComplete: boolean;
-}) {
-  return (
-    <div className="flex flex-col items-center">
-      <div
-        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${
-          isActive
-            ? "bg-green-600 text-white"
-            : isComplete
-              ? "bg-green-600/50 text-white"
-              : "bg-slate-700 text-slate-400"
-        }`}
-      >
-        {isComplete ? "✓" : step}
-      </div>
-      <span
-        className={`text-sm mt-1 ${
-          isActive ? "text-white" : "text-slate-400"
-        }`}
-      >
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function StepConnector({ isComplete }: { isComplete: boolean }) {
-  return (
-    <div
-      className={`w-16 sm:w-24 h-1 mx-2 rounded ${
-        isComplete ? "bg-green-600/50" : "bg-slate-700"
-      }`}
-    />
   );
 }

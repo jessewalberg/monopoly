@@ -61,6 +61,8 @@ export default defineSchema({
     createdAt: v.number(),
     startedAt: v.optional(v.number()),
     endedAt: v.optional(v.number()),
+    // Scheduled arena games (automatic hourly games)
+    isScheduledArena: v.optional(v.boolean()),
   }),
 
   players: defineTable({
@@ -69,6 +71,7 @@ export default defineSchema({
     modelDisplayName: v.string(),
     modelProvider: v.string(),
     tokenColor: v.string(),
+    textColor: v.string(), // For contrast on token color
     turnOrder: v.number(),
     // Live game state
     cash: v.number(),
