@@ -1,6 +1,6 @@
 # LLM Monopoly Arena - Architecture Diagrams
 
-This document contains Mermaid diagrams showing how all components work together.
+This document contains Mermaid diagrams showing how all components work together
 
 ## System Overview
 
