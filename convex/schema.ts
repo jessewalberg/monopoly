@@ -71,7 +71,7 @@ export default defineSchema({
     modelDisplayName: v.string(),
     modelProvider: v.string(),
     tokenColor: v.string(),
-    textColor: v.string(), // For contrast on token color
+    textColor: v.optional(v.string()), // For contrast on token color
     turnOrder: v.number(),
     // Live game state
     cash: v.number(),
@@ -118,6 +118,7 @@ export default defineSchema({
     cashBefore: v.number(),
     cashAfter: v.optional(v.number()),
     events: v.array(v.string()), // ["Rolled 7", "Landed on Park Place", "Paid $35 rent"]
+    tradeAttempts: v.optional(v.number()), // Track trade attempts per turn to prevent infinite loops
     startedAt: v.number(),
     endedAt: v.optional(v.number()),
   })

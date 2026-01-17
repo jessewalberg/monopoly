@@ -3,7 +3,7 @@ import { internalMutation, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id, Doc } from "./_generated/dataModel";
 import { getSpace, getHouseCost, getMortgageValue, getUnmortgageCost, getPurchasePrice } from "./lib/board";
-import { JAIL_FINE } from "./lib/constants";
+import { JAIL_FINE, MAX_TRADE_ATTEMPTS_PER_TURN } from "./lib/constants";
 import {
   canBuildHouse,
   canMortgage,
@@ -1210,6 +1210,19 @@ async function applyTradeAction(
     reasoning?: string;
   }
 ): Promise<boolean> {
+  // Check trade attempt limit to prevent infinite loops
+  const turn = await ctx.db.get(args.turnId);
+  if (!turn) return false;
+
+  const currentAttempts = turn.tradeAttempts ?? 0;
+  if (currentAttempts >= MAX_TRADE_ATTEMPTS_PER_TURN) {
+    await appendTurnEvent(ctx, args.turnId, `Trade skipped: reached limit of ${MAX_TRADE_ATTEMPTS_PER_TURN} trade attempts per turn`);
+    return false;
+  }
+
+  // Increment trade attempts
+  await ctx.db.patch(args.turnId, { tradeAttempts: currentAttempts + 1 });
+
   const recipientName =
     (args.parameters.recipientName as string) ||
     (args.parameters.recipient as string);

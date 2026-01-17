@@ -158,6 +158,7 @@ export const MAX_HOUSES = 4;
 export const HOTEL_LEVEL = 5; // houses = 5 means hotel
 export const TOTAL_HOUSES = 32; // Bank has 32 houses
 export const TOTAL_HOTELS = 12; // Bank has 12 hotels
+export const MAX_TRADE_ATTEMPTS_PER_TURN = 2; // Limit trades per turn to prevent infinite loops
 
 // Railroad rent based on number owned
 export const RAILROAD_RENT = [25, 50, 100, 200] as const;
