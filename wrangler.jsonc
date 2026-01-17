@@ -1,5 +1,11 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
+  "routes": [
+    {
+      "pattern": "monopoly-llm.jessewalberg.com",
+      "custom_domain": true
+    },
+  ],
   "name": "monopoly-llm",
   "compatibility_date": "2026-01-16",
   "compatibility_flags": ["nodejs_compat"],
