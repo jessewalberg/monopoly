@@ -530,10 +530,10 @@ export const getStrategyProfile = query({
 
     return {
       modelId: args.modelId,
-      buyRate: Math.round(buyRate * 100) / 100,
-      tradeFrequency: Math.round(tradeFrequency * 100) / 100,
-      buildSpeed: Math.round(buildSpeed * 100) / 100,
-      riskTolerance: Math.round(riskTolerance * 100) / 100,
+      buyRate: Math.min(1, Math.max(0, Math.round(buyRate * 100) / 100)),
+      tradeFrequency: Math.min(1, Math.max(0, Math.round(tradeFrequency * 100) / 100)),
+      buildSpeed: Math.min(1, Math.max(0, Math.round(buildSpeed * 100) / 100)),
+      riskTolerance: Math.min(1, Math.max(0, Math.round(riskTolerance * 100) / 100)),
       jailStrategy,
       decisionsAnalyzed: modelDecisions.length,
     }
@@ -621,10 +621,10 @@ export const getStrategyProfiles = query({
       profiles.push({
         modelId,
         modelDisplayName: modelPlayers[0].modelDisplayName,
-        buyRate: Math.round(buyRate * 100) / 100,
-        tradeFrequency: Math.round(tradeFrequency * 100) / 100,
-        buildSpeed: Math.round(buildSpeed * 100) / 100,
-        riskTolerance: Math.round(buyRate * 100) / 100, // Use buy rate as proxy
+        buyRate: Math.min(1, Math.max(0, Math.round(buyRate * 100) / 100)),
+        tradeFrequency: Math.min(1, Math.max(0, Math.round(tradeFrequency * 100) / 100)),
+        buildSpeed: Math.min(1, Math.max(0, Math.round(buildSpeed * 100) / 100)),
+        riskTolerance: Math.min(1, Math.max(0, Math.round(buyRate * 100) / 100)), // Use buy rate as proxy
         jailStrategy,
       })
     }

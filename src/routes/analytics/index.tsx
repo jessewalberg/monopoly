@@ -525,6 +525,11 @@ function normalizeProfiles(profiles: Array<StrategyProfile>): Array<StrategyProf
   return profiles.map((profile) => ({
     ...profile,
     modelDisplayName: profile.modelDisplayName || profile.modelId,
+    // Clamp values to 0-1 range in case of data issues
+    buyRate: Math.min(1, Math.max(0, profile.buyRate)),
+    tradeFrequency: Math.min(1, Math.max(0, profile.tradeFrequency)),
+    buildSpeed: Math.min(1, Math.max(0, profile.buildSpeed)),
+    riskTolerance: Math.min(1, Math.max(0, profile.riskTolerance)),
   }))
 }
 
