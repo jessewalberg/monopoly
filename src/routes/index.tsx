@@ -49,9 +49,11 @@ function HomePage() {
   const { data: recentGames } = useSuspenseQuery(
     convexQuery(api.games.list, { limit: 5 }),
   )
+  const { data: globalStats } = useSuspenseQuery(
+    convexQuery(api.analytics.getGlobalStats, {}),
+  )
 
-  // Calculate quick stats from recent games
-  const completedGames = recentGames.filter((g) => g.status === 'completed')
+  // Filter recent games for in-progress detection
   const inProgressGames = recentGames.filter((g) => g.status === 'in_progress')
 
   return (
@@ -115,20 +117,20 @@ function HomePage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <StatCard
             label="Total Games"
-            value={recentGames.length.toString()}
+            value={globalStats.totalGames.toString()}
             icon="🎮"
           />
           <StatCard
             label="Completed"
-            value={completedGames.length.toString()}
+            value={globalStats.completedGames.toString()}
             icon="🏆"
           />
           <StatCard
             label="In Progress"
-            value={inProgressGames.length.toString()}
+            value={globalStats.inProgressGames.toString()}
             icon="🎲"
           />
-          <StatCard label="AI Models" value="14+" icon="🤖" />
+          <StatCard label="AI Models" value={globalStats.totalModelsPlayed.toString()} icon="🤖" />
         </div>
       </section>
 
