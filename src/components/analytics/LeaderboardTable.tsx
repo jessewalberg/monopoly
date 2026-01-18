@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 
 // ============================================================
 // TYPES
@@ -152,7 +153,13 @@ function LeaderboardRow({ entry, rank, showRank, compact }: LeaderboardRowProps)
       )}
       <td className="py-3 px-2">
         <div className="flex flex-col">
-          <span className="text-white font-medium">{entry.modelDisplayName}</span>
+          <Link
+            to="/analytics/model/$modelId"
+            params={{ modelId: entry.modelId }}
+            className="text-white font-medium hover:text-green-300 transition-colors"
+          >
+            {entry.modelDisplayName}
+          </Link>
           <span className="text-xs text-slate-500">{entry.modelProvider}</span>
         </div>
       </td>
@@ -259,9 +266,13 @@ export function CompactLeaderboard({ data, limit = 5 }: CompactLeaderboardProps)
           <div className="flex items-center gap-3">
             <RankBadge rank={index + 1} />
             <div>
-              <div className="text-sm text-white font-medium">
+              <Link
+                to="/analytics/model/$modelId"
+                params={{ modelId: entry.modelId }}
+                className="text-sm text-white font-medium hover:text-green-300 transition-colors"
+              >
                 {entry.modelDisplayName}
-              </div>
+              </Link>
               <div className="text-xs text-slate-500">
                 {entry.wins} wins / {entry.gamesPlayed} games
               </div>

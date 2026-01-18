@@ -1,10 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "../../../convex/_generated/api";
 import { Card, CardBody, CardHeader } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
-import { AVAILABLE_MODELS } from "../../lib/models";
+import {
+  CompactLeaderboard,
+  PropertyHeatmap,
+  StrategyRadar,
+  TopPropertiesList,
+  WinRateChart,
+  WinRateTrendChart,
+  type StrategyProfile,
+} from "../../components/analytics";
 
 // ============================================================
 // ROUTE DEFINITION
@@ -19,16 +28,50 @@ export const Route = createFileRoute("/analytics/")({
 // ============================================================
 
 function AnalyticsDashboardPage() {
-  // Get all games for basic stats
-  const { data: allGames } = useSuspenseQuery(
-    convexQuery(api.games.list, { limit: 1000 })
+  const { data: globalStats } = useSuspenseQuery(
+    convexQuery(api.analytics.getGlobalStats, {})
+  );
+  const { data: leaderboard } = useSuspenseQuery(
+    convexQuery(api.analytics.getLeaderboard, { sortBy: "wins" })
+  );
+  const { data: propertyStats } = useSuspenseQuery(
+    convexQuery(api.analytics.getPropertyStats, {})
+  );
+  const { data: winRateTrends } = useSuspenseQuery(
+    convexQuery(api.analytics.getWinRateTrends, { limit: 50 })
+  );
+  const { data: recentGames } = useSuspenseQuery(
+    convexQuery(api.analytics.getRecentGames, { limit: 5 })
   );
 
-  // Calculate stats
-  const completedGames = allGames.filter((g) => g.status === "completed");
-  const totalTurns = completedGames.reduce((sum, g) => sum + g.currentTurnNumber, 0);
-  const avgTurns = completedGames.length > 0 ? Math.round(totalTurns / completedGames.length) : 0;
-  const avgDuration = calculateAvgDuration(completedGames);
+  const topModelIds = useMemo(
+    () => leaderboard.slice(0, 4).map((model) => model.modelId),
+    [leaderboard]
+  );
+
+  const { data: strategyProfiles } = useSuspenseQuery(
+    convexQuery(api.analytics.getStrategyProfiles, { modelIds: topModelIds })
+  );
+
+  const avgDuration = formatDurationMs(globalStats.avgDurationMs);
+  const avgTurns = globalStats.avgGameLength;
+
+  const winRateChartData = leaderboard.map((entry) => ({
+    modelId: entry.modelId,
+    modelDisplayName: entry.modelDisplayName,
+    wins: entry.wins,
+    gamesPlayed: entry.gamesPlayed,
+    winRate: entry.winRate,
+  }));
+
+  const topTrader = getTopModel(leaderboard, "tradesProposed");
+  const topCloser = getTopModel(
+    leaderboard.filter((entry) => entry.tradesProposed > 0),
+    "tradeAcceptRate"
+  );
+  const rentCollector = getTopModel(leaderboard, "totalRentCollected");
+  const fastestThinker = getTopModel(leaderboard, "avgDecisionTimeMs", "asc");
+  const propertyHoarder = getTopModel(leaderboard, "avgPropertiesOwned");
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto">
@@ -42,12 +85,12 @@ function AnalyticsDashboardPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <StatCard
           label="Total Games"
-          value={allGames.length.toString()}
+          value={globalStats.totalGames.toString()}
           icon="🎮"
         />
         <StatCard
           label="Completed"
-          value={completedGames.length.toString()}
+          value={globalStats.completedGames.toString()}
           icon="✓"
         />
         <StatCard
@@ -63,64 +106,132 @@ function AnalyticsDashboardPage() {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Quick Links */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-bold text-white">Explore Analytics</h2>
-          </CardHeader>
-          <CardBody>
-            <div className="space-y-3">
-              <QuickLink
-                to="/analytics/leaderboard"
-                title="Leaderboard"
-                description="View win rates and rankings for all AI models"
-                icon="🏆"
-              />
-              <QuickLink
-                to="/analytics/head-to-head"
-                title="Head-to-Head"
-                description="Compare performance between specific models"
-                icon="⚔️"
-              />
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Model Overview */}
-        <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">Available Models</h2>
+              <h2 className="text-lg font-bold text-white">Win Distribution</h2>
               <Badge variant="info" size="sm">
-                {AVAILABLE_MODELS.length} models
+                {leaderboard.length} models
               </Badge>
             </div>
           </CardHeader>
           <CardBody>
-            <div className="grid grid-cols-2 gap-2">
-              {AVAILABLE_MODELS.slice(0, 8).map((model) => (
-                <div
-                  key={model.id}
-                  className="flex items-center gap-2 p-2 bg-slate-700/50 rounded"
-                >
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                  <div className="min-w-0">
-                    <div className="text-sm text-white truncate">{model.name}</div>
-                    <div className="text-xs text-slate-400">{model.provider}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {AVAILABLE_MODELS.length > 8 && (
-              <p className="text-sm text-slate-400 mt-3 text-center">
-                +{AVAILABLE_MODELS.length - 8} more models
-              </p>
-            )}
+            <WinRateChart data={winRateChartData} metric="winRate" />
           </CardBody>
         </Card>
 
-        {/* Recent Games Summary */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white">Leaderboard</h2>
+              <Link
+                to="/analytics/leaderboard"
+                className="text-sm text-green-400 hover:text-green-300"
+              >
+                View all
+              </Link>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <CompactLeaderboard data={leaderboard} />
+          </CardBody>
+        </Card>
+
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <h2 className="text-lg font-bold text-white">Insights</h2>
+          </CardHeader>
+          <CardBody>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <InsightCard
+                title="Top Trader"
+                value={topTrader?.modelDisplayName || "N/A"}
+                subValue={
+                  topTrader ? `${topTrader.tradesProposed} proposals` : "No trade data"
+                }
+              />
+              <InsightCard
+                title="Best Deal Closer"
+                value={topCloser?.modelDisplayName || "N/A"}
+                subValue={
+                  topCloser
+                    ? `${Math.round(topCloser.tradeAcceptRate * 100)}% accepted`
+                    : "No accepted trades"
+                }
+              />
+              <InsightCard
+                title="Rent Collector"
+                value={rentCollector?.modelDisplayName || "N/A"}
+                subValue={
+                  rentCollector
+                    ? `$${Math.round(rentCollector.totalRentCollected).toLocaleString()}`
+                    : "No rent data"
+                }
+              />
+              <InsightCard
+                title="Fastest Thinker"
+                value={fastestThinker?.modelDisplayName || "N/A"}
+                subValue={
+                  fastestThinker
+                    ? `${Math.round(fastestThinker.avgDecisionTimeMs)} ms avg`
+                    : "No timing data"
+                }
+              />
+              <InsightCard
+                title="Property Hoarder"
+                value={propertyHoarder?.modelDisplayName || "N/A"}
+                subValue={
+                  propertyHoarder
+                    ? `${propertyHoarder.avgPropertiesOwned.toFixed(1)} props`
+                    : "No property data"
+                }
+              />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white">Property Performance</h2>
+              <Link
+                to="/analytics/leaderboard"
+                className="text-sm text-green-400 hover:text-green-300"
+              >
+                See models
+              </Link>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <PropertyHeatmap data={propertyStats} />
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-bold text-white">Property Rankings</h2>
+          </CardHeader>
+          <CardBody className="space-y-6">
+            <TopPropertiesList data={propertyStats} metric="ownerWinRate" />
+            <TopPropertiesList data={propertyStats} metric="avgRentPerGame" />
+          </CardBody>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white">Strategy Profiles</h2>
+              <Badge variant="info" size="sm">
+                Top models
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <StrategyRadar profiles={normalizeProfiles(strategyProfiles)} height={320} />
+          </CardBody>
+        </Card>
+
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -129,28 +240,33 @@ function AnalyticsDashboardPage() {
                 to="/games"
                 className="text-sm text-green-400 hover:text-green-300"
               >
-                View All
+                View all
               </Link>
             </div>
           </CardHeader>
           <CardBody>
-            {completedGames.length === 0 ? (
+            {recentGames.length === 0 ? (
               <p className="text-slate-400 text-center py-4">
                 No completed games yet. Start playing to see analytics!
               </p>
             ) : (
               <div className="space-y-2">
-                {completedGames.slice(0, 5).map((game) => (
+                {recentGames.map((game) => (
                   <Link
                     key={game._id}
                     to="/games/$gameId"
                     params={{ gameId: game._id }}
                     className="flex items-center justify-between p-2 bg-slate-700/50 rounded hover:bg-slate-700 transition-colors"
                   >
-                    <span className="text-sm text-white">
-                      Game #{game._id.slice(-6)}
-                    </span>
-                    <span className="text-sm text-slate-400">
+                    <div className="min-w-0">
+                      <div className="text-sm text-white">
+                        Game #{game._id.slice(-6)}
+                      </div>
+                      <div className="text-xs text-slate-400 truncate">
+                        Winner: {game.winner?.modelDisplayName || "Unknown"}
+                      </div>
+                    </div>
+                    <span className="text-xs text-slate-400">
                       {game.currentTurnNumber} turns
                     </span>
                   </Link>
@@ -160,41 +276,59 @@ function AnalyticsDashboardPage() {
           </CardBody>
         </Card>
 
-        {/* Placeholder for Charts */}
-        <Card>
+        <Card className="lg:col-span-3">
           <CardHeader>
-            <h2 className="text-lg font-bold text-white">Win Distribution</h2>
+            <h2 className="text-lg font-bold text-white">Win Trends</h2>
           </CardHeader>
           <CardBody>
-            <div className="h-48 flex items-center justify-center text-slate-400">
-              <div className="text-center">
-                <div className="text-4xl mb-2">📊</div>
-                <p>Charts will appear here after more games are played</p>
-                <p className="text-sm mt-2">
-                  Play at least 5 games to see win distribution
-                </p>
-              </div>
-            </div>
+            <WinRateTrendChart data={winRateTrends.trends} height={320} />
           </CardBody>
         </Card>
       </div>
 
-      {/* Info Banner */}
-      {completedGames.length < 5 && (
-        <div className="mt-8 bg-blue-900/30 border border-blue-500/30 rounded-lg p-4 text-center">
-          <p className="text-blue-200">
-            Play more games to unlock detailed analytics! You've completed{" "}
-            <span className="font-bold">{completedGames.length}/5</span> games needed
-            for full statistics.
-          </p>
-          <Link
-            to="/play"
-            className="inline-block mt-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-          >
-            Start a Game
-          </Link>
-        </div>
-      )}
+      {/* Explore Links */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-bold text-white">Explore Analytics</h2>
+          </CardHeader>
+          <CardBody>
+            <div className="space-y-3">
+              <QuickLink
+                to="/analytics/leaderboard"
+                title="Leaderboard"
+                description="Win rates, trades, and overall rankings"
+                icon="🏆"
+              />
+              <QuickLink
+                to="/analytics/head-to-head"
+                title="Head-to-Head"
+                description="Matchup matrix and direct comparisons"
+                icon="⚔️"
+              />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-bold text-white">Global Summary</h2>
+          </CardHeader>
+          <CardBody>
+            <div className="grid grid-cols-2 gap-4 text-sm text-slate-300">
+              <StatPair label="Models Played" value={globalStats.totalModelsPlayed} />
+              <StatPair label="Total Decisions" value={globalStats.totalDecisions} />
+              <StatPair label="Total Trades" value={globalStats.totalTrades} />
+              <StatPair label="Accepted Trades" value={globalStats.acceptedTrades} />
+              <StatPair
+                label="Total Rent Paid"
+                value={`$${globalStats.totalRentPaid.toLocaleString()}`}
+              />
+              <StatPair label="Games In Progress" value={globalStats.inProgressGames} />
+            </div>
+          </CardBody>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -255,23 +389,57 @@ function QuickLink({
 // HELPERS
 // ============================================================
 
-interface GameData {
-  startedAt?: number;
-  endedAt?: number;
-}
-
-function calculateAvgDuration(games: GameData[]): string {
-  const gamesWithDuration = games.filter((g) => g.startedAt && g.endedAt);
-  if (gamesWithDuration.length === 0) return "N/A";
-
-  const totalMs = gamesWithDuration.reduce(
-    (sum, g) => sum + ((g.endedAt || 0) - (g.startedAt || 0)),
-    0
-  );
-  const avgMs = totalMs / gamesWithDuration.length;
-
-  const minutes = Math.floor(avgMs / 60000);
+function formatDurationMs(durationMs: number): string {
+  if (!durationMs || durationMs <= 0) return "N/A";
+  const minutes = Math.floor(durationMs / 60000);
   if (minutes < 1) return "<1m";
   if (minutes < 60) return `${minutes}m`;
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+function getTopModel<T extends Record<string, number | string>>(
+  data: T[],
+  key: keyof T,
+  order: "desc" | "asc" = "desc"
+): T | undefined {
+  if (data.length === 0) return undefined;
+  return [...data].sort((a, b) => {
+    const aValue = Number(a[key] || 0);
+    const bValue = Number(b[key] || 0);
+    return order === "desc" ? bValue - aValue : aValue - bValue;
+  })[0];
+}
+
+function normalizeProfiles(profiles: StrategyProfile[]): StrategyProfile[] {
+  return profiles.map((profile) => ({
+    ...profile,
+    modelDisplayName: profile.modelDisplayName || profile.modelId,
+  }));
+}
+
+function InsightCard({
+  title,
+  value,
+  subValue,
+}: {
+  title: string;
+  value: string;
+  subValue: string;
+}) {
+  return (
+    <div className="bg-slate-700/40 rounded-lg p-4">
+      <div className="text-xs text-slate-400 uppercase tracking-wide">{title}</div>
+      <div className="text-lg font-semibold text-white mt-1">{value}</div>
+      <div className="text-xs text-slate-400 mt-1">{subValue}</div>
+    </div>
+  );
+}
+
+function StatPair({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div>
+      <div className="text-xs text-slate-400">{label}</div>
+      <div className="text-sm text-white font-medium">{value}</div>
+    </div>
+  );
 }
