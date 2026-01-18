@@ -1,23 +1,23 @@
-import { useEffect, useCallback } from "react";
+import { useCallback, useEffect } from 'react'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface KeyboardShortcut {
-  key: string;
-  ctrl?: boolean;
-  shift?: boolean;
-  alt?: boolean;
-  meta?: boolean;
-  description: string;
-  action: () => void;
-  enabled?: boolean;
+  key: string
+  ctrl?: boolean
+  shift?: boolean
+  alt?: boolean
+  meta?: boolean
+  description: string
+  action: () => void
+  enabled?: boolean
 }
 
 interface UseKeyboardShortcutsOptions {
-  enabled?: boolean;
-  preventDefault?: boolean;
+  enabled?: boolean
+  preventDefault?: boolean
 }
 
 // ============================================================
@@ -28,51 +28,51 @@ interface UseKeyboardShortcutsOptions {
  * Hook to handle keyboard shortcuts
  */
 export function useKeyboardShortcuts(
-  shortcuts: KeyboardShortcut[],
-  options: UseKeyboardShortcutsOptions = {}
+  shortcuts: Array<KeyboardShortcut>,
+  options: UseKeyboardShortcutsOptions = {},
 ) {
-  const { enabled = true, preventDefault = true } = options;
+  const { enabled = true, preventDefault = true } = options
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (!enabled) return;
+      if (!enabled) return
 
       // Don't trigger shortcuts when typing in inputs
-      const target = event.target as HTMLElement;
+      const target = event.target as HTMLElement
       if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
         target.isContentEditable
       ) {
-        return;
+        return
       }
 
       for (const shortcut of shortcuts) {
-        if (shortcut.enabled === false) continue;
+        if (shortcut.enabled === false) continue
 
-        const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase();
-        const ctrlMatch = !!shortcut.ctrl === (event.ctrlKey || event.metaKey);
-        const shiftMatch = !!shortcut.shift === event.shiftKey;
-        const altMatch = !!shortcut.alt === event.altKey;
+        const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase()
+        const ctrlMatch = !!shortcut.ctrl === (event.ctrlKey || event.metaKey)
+        const shiftMatch = !!shortcut.shift === event.shiftKey
+        const altMatch = !!shortcut.alt === event.altKey
 
         if (keyMatch && ctrlMatch && shiftMatch && altMatch) {
           if (preventDefault) {
-            event.preventDefault();
+            event.preventDefault()
           }
-          shortcut.action();
-          return;
+          shortcut.action()
+          return
         }
       }
     },
-    [shortcuts, enabled, preventDefault]
-  );
+    [shortcuts, enabled, preventDefault],
+  )
 
   useEffect(() => {
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown)
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [handleKeyDown]);
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleKeyDown])
 }
 
 // ============================================================
@@ -83,52 +83,52 @@ export function useKeyboardShortcuts(
  * Common game keyboard shortcuts
  */
 export function useGameShortcuts(handlers: {
-  onPause?: () => void;
-  onResume?: () => void;
-  onSpeedUp?: () => void;
-  onSlowDown?: () => void;
-  onToggleLog?: () => void;
-  onHelp?: () => void;
+  onPause?: () => void
+  onResume?: () => void
+  onSpeedUp?: () => void
+  onSlowDown?: () => void
+  onToggleLog?: () => void
+  onHelp?: () => void
 }) {
-  const shortcuts: KeyboardShortcut[] = [
+  const shortcuts: Array<KeyboardShortcut> = [
     {
-      key: " ",
-      description: "Pause/Resume game",
+      key: ' ',
+      description: 'Pause/Resume game',
       action: () => {
-        handlers.onPause?.() ?? handlers.onResume?.();
+        handlers.onPause?.() ?? handlers.onResume?.()
       },
       enabled: !!handlers.onPause || !!handlers.onResume,
     },
     {
-      key: "+",
-      description: "Speed up game",
+      key: '+',
+      description: 'Speed up game',
       action: () => handlers.onSpeedUp?.(),
       enabled: !!handlers.onSpeedUp,
     },
     {
-      key: "-",
-      description: "Slow down game",
+      key: '-',
+      description: 'Slow down game',
       action: () => handlers.onSlowDown?.(),
       enabled: !!handlers.onSlowDown,
     },
     {
-      key: "l",
-      description: "Toggle game log",
+      key: 'l',
+      description: 'Toggle game log',
       action: () => handlers.onToggleLog?.(),
       enabled: !!handlers.onToggleLog,
     },
     {
-      key: "?",
+      key: '?',
       shift: true,
-      description: "Show keyboard shortcuts",
+      description: 'Show keyboard shortcuts',
       action: () => handlers.onHelp?.(),
       enabled: !!handlers.onHelp,
     },
-  ];
+  ]
 
-  useKeyboardShortcuts(shortcuts);
+  useKeyboardShortcuts(shortcuts)
 
-  return shortcuts.filter((s) => s.enabled !== false);
+  return shortcuts.filter((s) => s.enabled !== false)
 }
 
 // ============================================================
@@ -139,45 +139,45 @@ export function useGameShortcuts(handlers: {
  * Navigation keyboard shortcuts
  */
 export function useNavigationShortcuts(handlers: {
-  onHome?: () => void;
-  onPlay?: () => void;
-  onAnalytics?: () => void;
-  onGames?: () => void;
+  onHome?: () => void
+  onPlay?: () => void
+  onAnalytics?: () => void
+  onGames?: () => void
 }) {
-  const shortcuts: KeyboardShortcut[] = [
+  const shortcuts: Array<KeyboardShortcut> = [
     {
-      key: "h",
+      key: 'h',
       alt: true,
-      description: "Go to Home",
+      description: 'Go to Home',
       action: () => handlers.onHome?.(),
       enabled: !!handlers.onHome,
     },
     {
-      key: "p",
+      key: 'p',
       alt: true,
-      description: "Go to Play",
+      description: 'Go to Play',
       action: () => handlers.onPlay?.(),
       enabled: !!handlers.onPlay,
     },
     {
-      key: "a",
+      key: 'a',
       alt: true,
-      description: "Go to Analytics",
+      description: 'Go to Analytics',
       action: () => handlers.onAnalytics?.(),
       enabled: !!handlers.onAnalytics,
     },
     {
-      key: "g",
+      key: 'g',
       alt: true,
-      description: "Go to Games",
+      description: 'Go to Games',
       action: () => handlers.onGames?.(),
       enabled: !!handlers.onGames,
     },
-  ];
+  ]
 
-  useKeyboardShortcuts(shortcuts);
+  useKeyboardShortcuts(shortcuts)
 
-  return shortcuts.filter((s) => s.enabled !== false);
+  return shortcuts.filter((s) => s.enabled !== false)
 }
 
 // ============================================================
@@ -188,24 +188,24 @@ export function useNavigationShortcuts(handlers: {
  * Format a shortcut key for display
  */
 export function formatShortcutKey(shortcut: KeyboardShortcut): string {
-  const parts: string[] = [];
+  const parts: Array<string> = []
 
-  if (shortcut.ctrl) parts.push("Ctrl");
-  if (shortcut.alt) parts.push("Alt");
-  if (shortcut.shift) parts.push("Shift");
-  if (shortcut.meta) parts.push("⌘");
+  if (shortcut.ctrl) parts.push('Ctrl')
+  if (shortcut.alt) parts.push('Alt')
+  if (shortcut.shift) parts.push('Shift')
+  if (shortcut.meta) parts.push('⌘')
 
   // Format special keys
-  let key = shortcut.key;
-  if (key === " ") key = "Space";
-  if (key === "ArrowUp") key = "↑";
-  if (key === "ArrowDown") key = "↓";
-  if (key === "ArrowLeft") key = "←";
-  if (key === "ArrowRight") key = "→";
-  if (key === "Enter") key = "↵";
-  if (key === "Escape") key = "Esc";
+  let key = shortcut.key
+  if (key === ' ') key = 'Space'
+  if (key === 'ArrowUp') key = '↑'
+  if (key === 'ArrowDown') key = '↓'
+  if (key === 'ArrowLeft') key = '←'
+  if (key === 'ArrowRight') key = '→'
+  if (key === 'Enter') key = '↵'
+  if (key === 'Escape') key = 'Esc'
 
-  parts.push(key.toUpperCase());
+  parts.push(key.toUpperCase())
 
-  return parts.join(" + ");
+  return parts.join(' + ')
 }

@@ -1,19 +1,20 @@
-import { useEffect, useCallback, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import {  useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import type {ReactNode} from 'react';
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title?: string;
-  children: ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
-  closeOnOverlay?: boolean;
-  closeOnEscape?: boolean;
-  showCloseButton?: boolean;
+  isOpen: boolean
+  onClose: () => void
+  title?: string
+  children: ReactNode
+  size?: 'sm' | 'md' | 'lg' | 'xl'
+  closeOnOverlay?: boolean
+  closeOnEscape?: boolean
+  showCloseButton?: boolean
 }
 
 // ============================================================
@@ -21,11 +22,11 @@ export interface ModalProps {
 // ============================================================
 
 const sizeStyles = {
-  sm: "max-w-sm",
-  md: "max-w-md",
-  lg: "max-w-lg",
-  xl: "max-w-xl",
-};
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+}
 
 // ============================================================
 // CLOSE ICON
@@ -47,7 +48,7 @@ function CloseIcon() {
         d="M6 18L18 6M6 6l12 12"
       />
     </svg>
-  );
+  )
 }
 
 // ============================================================
@@ -59,7 +60,7 @@ export function Modal({
   onClose,
   title,
   children,
-  size = "md",
+  size = 'md',
   closeOnOverlay = true,
   closeOnEscape = true,
   showCloseButton = true,
@@ -67,34 +68,34 @@ export function Modal({
   // Handle escape key
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
-      if (closeOnEscape && e.key === "Escape") {
-        onClose();
+      if (closeOnEscape && e.key === 'Escape') {
+        onClose()
       }
     },
-    [closeOnEscape, onClose]
-  );
+    [closeOnEscape, onClose],
+  )
 
   useEffect(() => {
     if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
+      document.addEventListener('keydown', handleEscape)
       // Prevent body scroll when modal is open
-      document.body.style.overflow = "hidden";
+      document.body.style.overflow = 'hidden'
     }
 
     return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "";
-    };
-  }, [isOpen, handleEscape]);
+      document.removeEventListener('keydown', handleEscape)
+      document.body.style.overflow = ''
+    }
+  }, [isOpen, handleEscape])
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   // Handle overlay click
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (closeOnOverlay && e.target === e.currentTarget) {
-      onClose();
+      onClose()
     }
-  };
+  }
 
   const modalContent = (
     <div
@@ -102,7 +103,7 @@ export function Modal({
       onClick={handleOverlayClick}
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? "modal-title" : undefined}
+      aria-labelledby={title ? 'modal-title' : undefined}
     >
       <div
         className={`relative w-full ${sizeStyles[size]} bg-slate-800 rounded-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200`}
@@ -111,10 +112,7 @@ export function Modal({
         {(title || showCloseButton) && (
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
             {title && (
-              <h2
-                id="modal-title"
-                className="text-lg font-semibold text-white"
-              >
+              <h2 id="modal-title" className="text-lg font-semibold text-white">
                 {title}
               </h2>
             )}
@@ -134,8 +132,8 @@ export function Modal({
         <div className="p-4">{children}</div>
       </div>
     </div>
-  );
+  )
 
   // Portal to body
-  return createPortal(modalContent, document.body);
+  return createPortal(modalContent, document.body)
 }

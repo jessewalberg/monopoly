@@ -1,19 +1,20 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "../../../convex/_generated/api";
-import { Card, CardBody, CardHeader } from "../../components/ui/Card";
-import { Badge } from "../../components/ui/Badge";
-import { LeaderboardTable } from "../../components/analytics";
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { convexQuery } from '@convex-dev/react-query'
+import { api } from '../../../convex/_generated/api'
+import { Card, CardBody, CardHeader } from '../../components/ui/Card'
+import { Badge } from '../../components/ui/Badge'
+import { LeaderboardTable } from '../../components/analytics'
+import type { FunctionArgs } from 'convex/server'
 
 // ============================================================
 // ROUTE DEFINITION
 // ============================================================
 
-export const Route = createFileRoute("/analytics/leaderboard")({
+export const Route = createFileRoute('/analytics/leaderboard')({
   component: LeaderboardPage,
-});
+})
 
 // ============================================================
 // LEADERBOARD PAGE
@@ -21,16 +22,19 @@ export const Route = createFileRoute("/analytics/leaderboard")({
 
 function LeaderboardPage() {
   const [sortBy, setSortBy] = useState<
-    "wins" | "winRate" | "gamesPlayed" | "avgNetWorth"
-  >("wins");
+    'wins' | 'winRate' | 'gamesPlayed' | 'avgNetWorth'
+  >('wins')
 
+  const leaderboardArgs = {
+    sortBy,
+  } satisfies FunctionArgs<typeof api.analytics.getLeaderboard>
   const { data: leaderboard } = useSuspenseQuery(
-    convexQuery(api.analytics.getLeaderboard, { sortBy })
-  );
+    convexQuery(api.analytics.getLeaderboard, leaderboardArgs),
+  )
 
   const { data: globalStats } = useSuspenseQuery(
-    convexQuery(api.analytics.getGlobalStats, {})
-  );
+    convexQuery(api.analytics.getGlobalStats, {}),
+  )
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto">
@@ -49,7 +53,9 @@ function LeaderboardPage() {
       {/* Stats Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div className="bg-slate-800 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-white">{leaderboard.length}</div>
+          <div className="text-2xl font-bold text-white">
+            {leaderboard.length}
+          </div>
           <div className="text-sm text-slate-400">Models with Games</div>
         </div>
         <div className="bg-slate-800 rounded-lg p-4 text-center">
@@ -59,14 +65,16 @@ function LeaderboardPage() {
           <div className="text-sm text-slate-400">Completed Games</div>
         </div>
         <div className="bg-slate-800 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-white">{globalStats.totalTrades}</div>
+          <div className="text-2xl font-bold text-white">
+            {globalStats.totalTrades}
+          </div>
           <div className="text-sm text-slate-400">Total Trades</div>
         </div>
         <div className="bg-slate-800 rounded-lg p-4 text-center">
           <div className="text-2xl font-bold text-white">
             {leaderboard.length > 0
               ? `${Math.round(leaderboard[0]?.winRate * 100)}%`
-              : "N/A"}
+              : 'N/A'}
           </div>
           <div className="text-sm text-slate-400">Top Win Rate</div>
         </div>
@@ -110,9 +118,10 @@ function LeaderboardPage() {
       {/* Info */}
       <div className="mt-6 text-sm text-slate-400 text-center">
         <p>
-          Sort by wins, win rate, games played, or average net worth to explore different rankings.
+          Sort by wins, win rate, games played, or average net worth to explore
+          different rankings.
         </p>
       </div>
     </div>
-  );
+  )
 }

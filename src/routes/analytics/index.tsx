@@ -1,60 +1,85 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "../../../convex/_generated/api";
-import { Card, CardBody, CardHeader } from "../../components/ui/Card";
-import { Badge } from "../../components/ui/Badge";
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { convexQuery, useConvexMutation } from '@convex-dev/react-query'
+import { api } from '../../../convex/_generated/api'
+import { Card, CardBody, CardHeader } from '../../components/ui/Card'
+import { Badge } from '../../components/ui/Badge'
 import {
   CompactLeaderboard,
   PropertyHeatmap,
+  
   StrategyRadar,
   TopPropertiesList,
   WinRateChart,
-  WinRateTrendChart,
-  type StrategyProfile,
-} from "../../components/analytics";
+  WinRateTrendChart
+} from '../../components/analytics'
+import type {StrategyProfile} from '../../components/analytics';
+import type { FunctionArgs } from 'convex/server'
 
 // ============================================================
 // ROUTE DEFINITION
 // ============================================================
 
-export const Route = createFileRoute("/analytics/")({
+export const Route = createFileRoute('/analytics/')({
   component: AnalyticsDashboardPage,
-});
+})
 
 // ============================================================
 // ANALYTICS DASHBOARD PAGE
 // ============================================================
 
 function AnalyticsDashboardPage() {
+  const [rebuildResult, setRebuildResult] = useState<{
+    gamesProcessed: number
+  } | null>(null)
+  const [adminUnlocked, setAdminUnlocked] = useState(false)
+  const [unlockError, setUnlockError] = useState<string | null>(null)
+  const adminPassphrase = import.meta.env.VITE_ADMIN_PASSPHRASE as
+    | string
+    | undefined
+
   const { data: globalStats } = useSuspenseQuery(
-    convexQuery(api.analytics.getGlobalStats, {})
-  );
+    convexQuery(api.analytics.getGlobalStats, {}),
+  )
+  const leaderboardArgs = {
+    sortBy: 'wins',
+  } satisfies FunctionArgs<typeof api.analytics.getLeaderboard>
   const { data: leaderboard } = useSuspenseQuery(
-    convexQuery(api.analytics.getLeaderboard, { sortBy: "wins" })
-  );
+    convexQuery(api.analytics.getLeaderboard, leaderboardArgs),
+  )
   const { data: propertyStats } = useSuspenseQuery(
-    convexQuery(api.analytics.getPropertyStats, {})
-  );
+    convexQuery(api.analytics.getPropertyStats, {}),
+  )
   const { data: winRateTrends } = useSuspenseQuery(
-    convexQuery(api.analytics.getWinRateTrends, { limit: 50 })
-  );
+    convexQuery(api.analytics.getWinRateTrends, { limit: 50 }),
+  )
   const { data: recentGames } = useSuspenseQuery(
-    convexQuery(api.analytics.getRecentGames, { limit: 5 })
-  );
+    convexQuery(api.analytics.getRecentGames, { limit: 5 }),
+  )
+
+  const rebuildStats = useMutation<
+    { gamesProcessed: number; success: boolean },
+    Error,
+    {}
+  >({
+    mutationFn: useConvexMutation(api.statsAggregator.recalculateAllStats),
+    onSuccess: (result) => {
+      setRebuildResult(result)
+    },
+  })
 
   const topModelIds = useMemo(
     () => leaderboard.slice(0, 4).map((model) => model.modelId),
-    [leaderboard]
-  );
+    [leaderboard],
+  )
 
   const { data: strategyProfiles } = useSuspenseQuery(
-    convexQuery(api.analytics.getStrategyProfiles, { modelIds: topModelIds })
-  );
+    convexQuery(api.analytics.getStrategyProfiles, { modelIds: topModelIds }),
+  )
 
-  const avgDuration = formatDurationMs(globalStats.avgDurationMs);
-  const avgTurns = globalStats.avgGameLength;
+  const avgDuration = formatDurationMs(globalStats.avgDurationMs)
+  const avgTurns = globalStats.avgGameLength
 
   const winRateChartData = leaderboard.map((entry) => ({
     modelId: entry.modelId,
@@ -62,23 +87,63 @@ function AnalyticsDashboardPage() {
     wins: entry.wins,
     gamesPlayed: entry.gamesPlayed,
     winRate: entry.winRate,
-  }));
+  }))
 
-  const topTrader = getTopModel(leaderboard, "tradesProposed");
+  const topTrader = getTopModel(leaderboard, 'tradesProposed')
   const topCloser = getTopModel(
     leaderboard.filter((entry) => entry.tradesProposed > 0),
-    "tradeAcceptRate"
-  );
-  const rentCollector = getTopModel(leaderboard, "totalRentCollected");
-  const fastestThinker = getTopModel(leaderboard, "avgDecisionTimeMs", "asc");
-  const propertyHoarder = getTopModel(leaderboard, "avgPropertiesOwned");
+    'tradeAcceptRate',
+  )
+  const rentCollector = getTopModel(leaderboard, 'totalRentCollected')
+  const fastestThinker = getTopModel(leaderboard, 'avgDecisionTimeMs', 'asc')
+  const propertyHoarder = getTopModel(leaderboard, 'avgPropertiesOwned')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const unlocked = window.localStorage.getItem('analyticsAdminUnlocked')
+    if (unlocked === 'true') {
+      setAdminUnlocked(true)
+    }
+  }, [])
+
+  const handleUnlockAdmin = () => {
+    setUnlockError(null)
+    if (!adminPassphrase) {
+      setUnlockError('Admin passphrase is not configured.')
+      return
+    }
+
+    const entered = window.prompt('Enter admin passphrase')
+    if (!entered) return
+    if (entered !== adminPassphrase) {
+      setUnlockError('Incorrect passphrase.')
+      return
+    }
+
+    window.localStorage.setItem('analyticsAdminUnlocked', 'true')
+    setAdminUnlocked(true)
+  }
+
+  const handleRebuildStats = () => {
+    if (
+      window.confirm(
+        'Rebuild all analytics stats now? This may take a little while.',
+      )
+    ) {
+      rebuildStats.mutate({})
+    }
+  }
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Analytics Dashboard</h1>
-        <p className="text-slate-400">AI model performance and game statistics</p>
+        <h1 className="text-3xl font-bold text-white mb-2">
+          Analytics Dashboard
+        </h1>
+        <p className="text-slate-400">
+          AI model performance and game statistics
+        </p>
       </div>
 
       {/* Quick Stats */}
@@ -93,16 +158,8 @@ function AnalyticsDashboardPage() {
           value={globalStats.completedGames.toString()}
           icon="✓"
         />
-        <StatCard
-          label="Avg Turns"
-          value={avgTurns.toString()}
-          icon="🎲"
-        />
-        <StatCard
-          label="Avg Duration"
-          value={avgDuration}
-          icon="⏱️"
-        />
+        <StatCard label="Avg Turns" value={avgTurns.toString()} icon="🎲" />
+        <StatCard label="Avg Duration" value={avgDuration} icon="⏱️" />
       </div>
 
       {/* Main Content */}
@@ -146,45 +203,47 @@ function AnalyticsDashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <InsightCard
                 title="Top Trader"
-                value={topTrader?.modelDisplayName || "N/A"}
+                value={topTrader?.modelDisplayName || 'N/A'}
                 subValue={
-                  topTrader ? `${topTrader.tradesProposed} proposals` : "No trade data"
+                  topTrader
+                    ? `${topTrader.tradesProposed} proposals`
+                    : 'No trade data'
                 }
               />
               <InsightCard
                 title="Best Deal Closer"
-                value={topCloser?.modelDisplayName || "N/A"}
+                value={topCloser?.modelDisplayName || 'N/A'}
                 subValue={
                   topCloser
                     ? `${Math.round(topCloser.tradeAcceptRate * 100)}% accepted`
-                    : "No accepted trades"
+                    : 'No accepted trades'
                 }
               />
               <InsightCard
                 title="Rent Collector"
-                value={rentCollector?.modelDisplayName || "N/A"}
+                value={rentCollector?.modelDisplayName || 'N/A'}
                 subValue={
                   rentCollector
                     ? `$${Math.round(rentCollector.totalRentCollected).toLocaleString()}`
-                    : "No rent data"
+                    : 'No rent data'
                 }
               />
               <InsightCard
                 title="Fastest Thinker"
-                value={fastestThinker?.modelDisplayName || "N/A"}
+                value={fastestThinker?.modelDisplayName || 'N/A'}
                 subValue={
                   fastestThinker
                     ? `${Math.round(fastestThinker.avgDecisionTimeMs)} ms avg`
-                    : "No timing data"
+                    : 'No timing data'
                 }
               />
               <InsightCard
                 title="Property Hoarder"
-                value={propertyHoarder?.modelDisplayName || "N/A"}
+                value={propertyHoarder?.modelDisplayName || 'N/A'}
                 subValue={
                   propertyHoarder
                     ? `${propertyHoarder.avgPropertiesOwned.toFixed(1)} props`
-                    : "No property data"
+                    : 'No property data'
                 }
               />
             </div>
@@ -194,7 +253,9 @@ function AnalyticsDashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">Property Performance</h2>
+              <h2 className="text-lg font-bold text-white">
+                Property Performance
+              </h2>
               <Link
                 to="/analytics/leaderboard"
                 className="text-sm text-green-400 hover:text-green-300"
@@ -221,14 +282,19 @@ function AnalyticsDashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">Strategy Profiles</h2>
+              <h2 className="text-lg font-bold text-white">
+                Strategy Profiles
+              </h2>
               <Badge variant="info" size="sm">
                 Top models
               </Badge>
             </div>
           </CardHeader>
           <CardBody>
-            <StrategyRadar profiles={normalizeProfiles(strategyProfiles)} height={320} />
+            <StrategyRadar
+              profiles={normalizeProfiles(strategyProfiles)}
+              height={320}
+            />
           </CardBody>
         </Card>
 
@@ -263,7 +329,7 @@ function AnalyticsDashboardPage() {
                         Game #{game._id.slice(-6)}
                       </div>
                       <div className="text-xs text-slate-400 truncate">
-                        Winner: {game.winner?.modelDisplayName || "Unknown"}
+                        Winner: {game.winner?.modelDisplayName || 'Unknown'}
                       </div>
                     </div>
                     <span className="text-xs text-slate-400">
@@ -281,7 +347,10 @@ function AnalyticsDashboardPage() {
             <h2 className="text-lg font-bold text-white">Win Trends</h2>
           </CardHeader>
           <CardBody>
-            <WinRateTrendChart data={winRateTrends.trends} height={320} />
+            <WinRateTrendChart
+              data={normalizeTrendData(winRateTrends.trends)}
+              height={320}
+            />
           </CardBody>
         </Card>
       </div>
@@ -312,25 +381,67 @@ function AnalyticsDashboardPage() {
 
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-bold text-white">Global Summary</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white">Global Summary</h2>
+              {adminUnlocked ? (
+                <button
+                  type="button"
+                  onClick={handleRebuildStats}
+                  className="text-xs bg-slate-700 text-white px-3 py-1 rounded-md hover:bg-slate-600 transition-colors"
+                  disabled={rebuildStats.isPending}
+                >
+                  {rebuildStats.isPending
+                    ? 'Rebuilding...'
+                    : 'Rebuild Analytics'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleUnlockAdmin}
+                  className="text-xs bg-slate-700 text-white px-3 py-1 rounded-md hover:bg-slate-600 transition-colors"
+                >
+                  Unlock Admin
+                </button>
+              )}
+            </div>
           </CardHeader>
           <CardBody>
             <div className="grid grid-cols-2 gap-4 text-sm text-slate-300">
-              <StatPair label="Models Played" value={globalStats.totalModelsPlayed} />
-              <StatPair label="Total Decisions" value={globalStats.totalDecisions} />
+              <StatPair
+                label="Models Played"
+                value={globalStats.totalModelsPlayed}
+              />
+              <StatPair
+                label="Total Decisions"
+                value={globalStats.totalDecisions}
+              />
               <StatPair label="Total Trades" value={globalStats.totalTrades} />
-              <StatPair label="Accepted Trades" value={globalStats.acceptedTrades} />
+              <StatPair
+                label="Accepted Trades"
+                value={globalStats.acceptedTrades}
+              />
               <StatPair
                 label="Total Rent Paid"
                 value={`$${globalStats.totalRentPaid.toLocaleString()}`}
               />
-              <StatPair label="Games In Progress" value={globalStats.inProgressGames} />
+              <StatPair
+                label="Games In Progress"
+                value={globalStats.inProgressGames}
+              />
             </div>
+            {unlockError && (
+              <div className="mt-3 text-xs text-red-300">{unlockError}</div>
+            )}
+            {rebuildResult && (
+              <div className="mt-4 text-xs text-slate-400">
+                Rebuilt analytics for {rebuildResult.gamesProcessed} games.
+              </div>
+            )}
           </CardBody>
         </Card>
       </div>
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -342,9 +453,9 @@ function StatCard({
   value,
   icon,
 }: {
-  label: string;
-  value: string;
-  icon: string;
+  label: string
+  value: string
+  icon: string
 }) {
   return (
     <div className="bg-slate-800 rounded-lg p-4">
@@ -356,7 +467,7 @@ function StatCard({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function QuickLink({
@@ -365,10 +476,10 @@ function QuickLink({
   description,
   icon,
 }: {
-  to: "/analytics/leaderboard" | "/analytics/head-to-head";
-  title: string;
-  description: string;
-  icon: string;
+  to: '/analytics/leaderboard' | '/analytics/head-to-head'
+  title: string
+  description: string
+  icon: string
 }) {
   return (
     <Link
@@ -382,7 +493,7 @@ function QuickLink({
       </div>
       <span className="ml-auto text-slate-400">→</span>
     </Link>
-  );
+  )
 }
 
 // ============================================================
@@ -390,31 +501,44 @@ function QuickLink({
 // ============================================================
 
 function formatDurationMs(durationMs: number): string {
-  if (!durationMs || durationMs <= 0) return "N/A";
-  const minutes = Math.floor(durationMs / 60000);
-  if (minutes < 1) return "<1m";
-  if (minutes < 60) return `${minutes}m`;
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+  if (!durationMs || durationMs <= 0) return 'N/A'
+  const minutes = Math.floor(durationMs / 60000)
+  if (minutes < 1) return '<1m'
+  if (minutes < 60) return `${minutes}m`
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
 function getTopModel<T extends Record<string, number | string>>(
-  data: T[],
+  data: Array<T>,
   key: keyof T,
-  order: "desc" | "asc" = "desc"
+  order: 'desc' | 'asc' = 'desc',
 ): T | undefined {
-  if (data.length === 0) return undefined;
+  if (data.length === 0) return undefined
   return [...data].sort((a, b) => {
-    const aValue = Number(a[key] || 0);
-    const bValue = Number(b[key] || 0);
-    return order === "desc" ? bValue - aValue : aValue - bValue;
-  })[0];
+    const aValue = Number(a[key] || 0)
+    const bValue = Number(b[key] || 0)
+    return order === 'desc' ? bValue - aValue : aValue - bValue
+  })[0]
 }
 
-function normalizeProfiles(profiles: StrategyProfile[]): StrategyProfile[] {
+function normalizeProfiles(profiles: Array<StrategyProfile>): Array<StrategyProfile> {
   return profiles.map((profile) => ({
     ...profile,
     modelDisplayName: profile.modelDisplayName || profile.modelId,
-  }));
+  }))
+}
+
+function normalizeTrendData(
+  trends: Record<
+    string,
+    Array<{ gameNumber: number; cumulativeWins: number; modelName: string }> | undefined
+  >,
+): Record<string, Array<{ gameNumber: number; cumulativeWins: number; modelName: string }>> {
+  return Object.fromEntries(
+    Object.entries(trends)
+      .filter(([, points]) => points && points.length > 0)
+      .map(([modelId, points]) => [modelId, points ?? []]),
+  )
 }
 
 function InsightCard({
@@ -422,17 +546,19 @@ function InsightCard({
   value,
   subValue,
 }: {
-  title: string;
-  value: string;
-  subValue: string;
+  title: string
+  value: string
+  subValue: string
 }) {
   return (
     <div className="bg-slate-700/40 rounded-lg p-4">
-      <div className="text-xs text-slate-400 uppercase tracking-wide">{title}</div>
+      <div className="text-xs text-slate-400 uppercase tracking-wide">
+        {title}
+      </div>
       <div className="text-lg font-semibold text-white mt-1">{value}</div>
       <div className="text-xs text-slate-400 mt-1">{subValue}</div>
     </div>
-  );
+  )
 }
 
 function StatPair({ label, value }: { label: string; value: number | string }) {
@@ -441,5 +567,5 @@ function StatPair({ label, value }: { label: string; value: number | string }) {
       <div className="text-xs text-slate-400">{label}</div>
       <div className="text-sm text-white font-medium">{value}</div>
     </div>
-  );
+  )
 }

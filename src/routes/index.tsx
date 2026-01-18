@@ -1,43 +1,43 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "../../convex/_generated/api";
-import { useState, useEffect } from "react";
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { convexQuery } from '@convex-dev/react-query'
+import { useEffect, useState } from 'react'
+import { api } from '../../convex/_generated/api'
 
 // ============================================================
 // ROUTE DEFINITION
 // ============================================================
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute('/')({
   component: HomePage,
-});
+})
 
 // ============================================================
 // COUNTDOWN HOOK
 // ============================================================
 
 function useNextHourCountdown() {
-  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextHour());
+  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextHour())
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimeLeft(getTimeToNextHour());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+      setTimeLeft(getTimeToNextHour())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
-  return timeLeft;
+  return timeLeft
 }
 
 function getTimeToNextHour(): { minutes: number; seconds: number } {
-  const now = new Date();
-  const nextHour = new Date(now);
-  nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
-  const diff = nextHour.getTime() - now.getTime();
+  const now = new Date()
+  const nextHour = new Date(now)
+  nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0)
+  const diff = nextHour.getTime() - now.getTime()
   return {
     minutes: Math.floor(diff / 60000),
     seconds: Math.floor((diff % 60000) / 1000),
-  };
+  }
 }
 
 // ============================================================
@@ -45,14 +45,14 @@ function getTimeToNextHour(): { minutes: number; seconds: number } {
 // ============================================================
 
 function HomePage() {
-  const countdown = useNextHourCountdown();
+  const countdown = useNextHourCountdown()
   const { data: recentGames } = useSuspenseQuery(
-    convexQuery(api.games.list, { limit: 5 })
-  );
+    convexQuery(api.games.list, { limit: 5 }),
+  )
 
   // Calculate quick stats from recent games
-  const completedGames = recentGames.filter((g) => g.status === "completed");
-  const inProgressGames = recentGames.filter((g) => g.status === "in_progress");
+  const completedGames = recentGames.filter((g) => g.status === 'completed')
+  const inProgressGames = recentGames.filter((g) => g.status === 'in_progress')
 
   return (
     <div className="p-4 sm:p-8 flex flex-col gap-12">
@@ -62,8 +62,8 @@ function HomePage() {
           LLM Monopoly Arena
         </h1>
         <p className="text-lg sm:text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-          Watch AI models battle for Boardwalk - automated hourly matches between
-          Claude, GPT, Gemini, and Grok
+          Watch AI models battle for Boardwalk - automated hourly matches
+          between Claude, GPT, Gemini, and Grok
         </p>
 
         {/* Active Game or Countdown */}
@@ -74,7 +74,9 @@ function HomePage() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
               </span>
-              <span className="text-green-400 font-medium">Game In Progress</span>
+              <span className="text-green-400 font-medium">
+                Game In Progress
+              </span>
             </div>
             <div>
               <Link
@@ -90,8 +92,8 @@ function HomePage() {
           <div className="mb-8">
             <div className="text-slate-400 mb-2">Next game in</div>
             <div className="text-5xl font-bold text-green-400 font-mono mb-4">
-              {String(countdown.minutes).padStart(2, "0")}:
-              {String(countdown.seconds).padStart(2, "0")}
+              {String(countdown.minutes).padStart(2, '0')}:
+              {String(countdown.seconds).padStart(2, '0')}
             </div>
             <Link
               to="/play"
@@ -121,11 +123,7 @@ function HomePage() {
             value={inProgressGames.length.toString()}
             icon="🎲"
           />
-          <StatCard
-            label="AI Models"
-            value="14+"
-            icon="🤖"
-          />
+          <StatCard label="AI Models" value="14+" icon="🤖" />
         </div>
       </section>
 
@@ -143,7 +141,9 @@ function HomePage() {
             </Link>
           </div>
           {recentGames.length === 0 ? (
-            <p className="text-slate-400">No games played yet. Start a new game!</p>
+            <p className="text-slate-400">
+              No games played yet. Start a new game!
+            </p>
           ) : (
             <div className="flex flex-col gap-2">
               {recentGames.slice(0, 5).map((game) => (
@@ -155,7 +155,9 @@ function HomePage() {
 
         {/* How It Works */}
         <div className="bg-slate-800 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-white mb-4">How Arena Mode Works</h2>
+          <h2 className="text-xl font-bold text-white mb-4">
+            How Arena Mode Works
+          </h2>
           <div className="space-y-4">
             <StepCard
               number={1}
@@ -210,7 +212,9 @@ function HomePage() {
 
       {/* Features */}
       <section className="max-w-6xl mx-auto w-full">
-        <h2 className="text-2xl font-bold text-white text-center mb-8">Features</h2>
+        <h2 className="text-2xl font-bold text-white text-center mb-8">
+          Features
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <FeatureCard
             title="Real-time Gameplay"
@@ -245,7 +249,7 @@ function HomePage() {
         </div>
       </section>
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -257,9 +261,9 @@ function StatCard({
   value,
   icon,
 }: {
-  label: string;
-  value: string;
-  icon: string;
+  label: string
+  value: string
+  icon: string
 }) {
   return (
     <div className="bg-slate-800 rounded-lg p-4 text-center">
@@ -267,10 +271,14 @@ function StatCard({
       <div className="text-2xl font-bold text-white">{value}</div>
       <div className="text-sm text-slate-400">{label}</div>
     </div>
-  );
+  )
 }
 
-function GameLink({ game }: { game: { _id: string; status: string; currentTurnNumber: number } }) {
+function GameLink({
+  game,
+}: {
+  game: { _id: string; status: string; currentTurnNumber: number }
+}) {
   const content = (
     <>
       <div>
@@ -283,9 +291,9 @@ function GameLink({ game }: { game: { _id: string; status: string; currentTurnNu
       </div>
       <GameStatusBadge status={game.status} />
     </>
-  );
+  )
 
-  if (game.status === "in_progress") {
+  if (game.status === 'in_progress') {
     return (
       <Link
         to="/play/$gameId"
@@ -294,7 +302,7 @@ function GameLink({ game }: { game: { _id: string; status: string; currentTurnNu
       >
         {content}
       </Link>
-    );
+    )
   }
 
   return (
@@ -305,24 +313,24 @@ function GameLink({ game }: { game: { _id: string; status: string; currentTurnNu
     >
       {content}
     </Link>
-  );
+  )
 }
 
 function GameStatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    setup: "bg-yellow-600",
-    in_progress: "bg-green-600",
-    completed: "bg-blue-600",
-    abandoned: "bg-red-600",
-  };
+    setup: 'bg-yellow-600',
+    in_progress: 'bg-green-600',
+    completed: 'bg-blue-600',
+    abandoned: 'bg-red-600',
+  }
 
   return (
     <span
-      className={`px-2 py-1 rounded text-xs font-medium text-white ${styles[status] || "bg-slate-600"}`}
+      className={`px-2 py-1 rounded text-xs font-medium text-white ${styles[status] || 'bg-slate-600'}`}
     >
-      {status.replace("_", " ")}
+      {status.replace('_', ' ')}
     </span>
-  );
+  )
 }
 
 function StepCard({
@@ -330,9 +338,9 @@ function StepCard({
   title,
   description,
 }: {
-  number: number;
-  title: string;
-  description: string;
+  number: number
+  title: string
+  description: string
 }) {
   return (
     <div className="flex gap-3">
@@ -344,7 +352,7 @@ function StepCard({
         <p className="text-sm text-slate-400">{description}</p>
       </div>
     </div>
-  );
+  )
 }
 
 function QuickLinkCard({
@@ -354,17 +362,17 @@ function QuickLinkCard({
   icon,
   color,
 }: {
-  to: "/play" | "/analytics" | "/games";
-  title: string;
-  description: string;
-  icon: string;
-  color: "green" | "blue" | "purple";
+  to: '/play' | '/analytics' | '/games'
+  title: string
+  description: string
+  icon: string
+  color: 'green' | 'blue' | 'purple'
 }) {
   const colorStyles = {
-    green: "bg-green-600 hover:bg-green-700",
-    blue: "bg-blue-600 hover:bg-blue-700",
-    purple: "bg-purple-600 hover:bg-purple-700",
-  };
+    green: 'bg-green-600 hover:bg-green-700',
+    blue: 'bg-blue-600 hover:bg-blue-700',
+    purple: 'bg-purple-600 hover:bg-purple-700',
+  }
 
   return (
     <Link
@@ -375,7 +383,7 @@ function QuickLinkCard({
       <h3 className="font-bold text-white text-lg">{title}</h3>
       <p className="text-sm text-white/80">{description}</p>
     </Link>
-  );
+  )
 }
 
 function FeatureCard({
@@ -383,9 +391,9 @@ function FeatureCard({
   description,
   icon,
 }: {
-  title: string;
-  description: string;
-  icon: string;
+  title: string
+  description: string
+  icon: string
 }) {
   return (
     <div className="bg-slate-800 rounded-lg p-5">
@@ -393,5 +401,5 @@ function FeatureCard({
       <h3 className="font-bold text-white mb-1">{title}</h3>
       <p className="text-sm text-slate-400">{description}</p>
     </div>
-  );
+  )
 }

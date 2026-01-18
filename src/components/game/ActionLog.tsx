@@ -1,39 +1,39 @@
-import { useRef, useEffect } from "react";
-import { Card, CardHeader, CardBody } from "../ui/Card";
+import { useEffect, useRef } from 'react'
+import { Card, CardBody, CardHeader } from '../ui/Card'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export type ActionEventType =
-  | "roll"
-  | "move"
-  | "purchase"
-  | "rent"
-  | "card"
-  | "jail"
-  | "build"
-  | "mortgage"
-  | "trade"
-  | "bankrupt"
-  | "system"
-  | "decision";
+  | 'roll'
+  | 'move'
+  | 'purchase'
+  | 'rent'
+  | 'card'
+  | 'jail'
+  | 'build'
+  | 'mortgage'
+  | 'trade'
+  | 'bankrupt'
+  | 'system'
+  | 'decision'
 
 export interface ActionEvent {
-  id: string;
-  timestamp: number;
-  type: ActionEventType;
-  message: string;
-  playerName?: string;
-  playerColor?: string;
-  details?: string;
+  id: string
+  timestamp: number
+  type: ActionEventType
+  message: string
+  playerName?: string
+  playerColor?: string
+  details?: string
 }
 
 export interface ActionLogProps {
-  events: ActionEvent[];
-  maxHeight?: string;
-  autoScroll?: boolean;
-  showTimestamps?: boolean;
+  events: Array<ActionEvent>
+  maxHeight?: string
+  autoScroll?: boolean
+  showTimestamps?: boolean
 }
 
 // ============================================================
@@ -44,19 +44,47 @@ const eventTypeConfig: Record<
   ActionEventType,
   { icon: string; bgColor: string; textColor: string }
 > = {
-  roll: { icon: "🎲", bgColor: "bg-blue-500/20", textColor: "text-blue-400" },
-  move: { icon: "👟", bgColor: "bg-slate-500/20", textColor: "text-slate-400" },
-  purchase: { icon: "🏠", bgColor: "bg-green-500/20", textColor: "text-green-400" },
-  rent: { icon: "💰", bgColor: "bg-yellow-500/20", textColor: "text-yellow-400" },
-  card: { icon: "🃏", bgColor: "bg-purple-500/20", textColor: "text-purple-400" },
-  jail: { icon: "🔒", bgColor: "bg-orange-500/20", textColor: "text-orange-400" },
-  build: { icon: "🏗️", bgColor: "bg-teal-500/20", textColor: "text-teal-400" },
-  mortgage: { icon: "📄", bgColor: "bg-red-500/20", textColor: "text-red-400" },
-  trade: { icon: "🤝", bgColor: "bg-indigo-500/20", textColor: "text-indigo-400" },
-  bankrupt: { icon: "💀", bgColor: "bg-red-600/20", textColor: "text-red-500" },
-  system: { icon: "⚙️", bgColor: "bg-slate-600/20", textColor: "text-slate-500" },
-  decision: { icon: "🤔", bgColor: "bg-cyan-500/20", textColor: "text-cyan-400" },
-};
+  roll: { icon: '🎲', bgColor: 'bg-blue-500/20', textColor: 'text-blue-400' },
+  move: { icon: '👟', bgColor: 'bg-slate-500/20', textColor: 'text-slate-400' },
+  purchase: {
+    icon: '🏠',
+    bgColor: 'bg-green-500/20',
+    textColor: 'text-green-400',
+  },
+  rent: {
+    icon: '💰',
+    bgColor: 'bg-yellow-500/20',
+    textColor: 'text-yellow-400',
+  },
+  card: {
+    icon: '🃏',
+    bgColor: 'bg-purple-500/20',
+    textColor: 'text-purple-400',
+  },
+  jail: {
+    icon: '🔒',
+    bgColor: 'bg-orange-500/20',
+    textColor: 'text-orange-400',
+  },
+  build: { icon: '🏗️', bgColor: 'bg-teal-500/20', textColor: 'text-teal-400' },
+  mortgage: { icon: '📄', bgColor: 'bg-red-500/20', textColor: 'text-red-400' },
+  trade: {
+    icon: '🤝',
+    bgColor: 'bg-indigo-500/20',
+    textColor: 'text-indigo-400',
+  },
+  bankrupt: { icon: '💀', bgColor: 'bg-red-600/20', textColor: 'text-red-500' },
+  system: {
+    icon: '⚙️',
+    bgColor: 'bg-slate-600/20',
+    textColor: 'text-slate-500',
+  },
+  decision: {
+    icon: '🤔',
+    bgColor: 'bg-cyan-500/20',
+    textColor: 'text-cyan-400',
+  },
+}
 
 // ============================================================
 // ACTION LOG COMPONENT
@@ -64,18 +92,18 @@ const eventTypeConfig: Record<
 
 export function ActionLog({
   events,
-  maxHeight = "400px",
+  maxHeight = '400px',
   autoScroll = true,
   showTimestamps = false,
 }: ActionLogProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new events are added
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [events, autoScroll]);
+  }, [events, autoScroll])
 
   return (
     <Card className="h-full flex flex-col">
@@ -107,7 +135,7 @@ export function ActionLog({
         </div>
       </CardBody>
     </Card>
-  );
+  )
 }
 
 // ============================================================
@@ -118,20 +146,20 @@ function ActionEventRow({
   event,
   showTimestamp,
 }: {
-  event: ActionEvent;
-  showTimestamp: boolean;
+  event: ActionEvent
+  showTimestamp: boolean
 }) {
-  const config = eventTypeConfig[event.type];
+  const config = eventTypeConfig[event.type]
 
   const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
+    const date = new Date(timestamp)
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
       hour12: false,
-    });
-  };
+    })
+  }
 
   return (
     <div
@@ -147,8 +175,8 @@ function ActionEventRow({
           <span
             className="inline-block text-xs font-medium px-1.5 rounded mb-0.5"
             style={{
-              backgroundColor: event.playerColor || "#666",
-              color: "#fff",
+              backgroundColor: event.playerColor || '#666',
+              color: '#fff',
             }}
           >
             {event.playerName}
@@ -159,7 +187,9 @@ function ActionEventRow({
           {event.message}
         </p>
         {event.details && (
-          <p className="text-xs text-slate-500 mt-0.5 break-words">{event.details}</p>
+          <p className="text-xs text-slate-500 mt-0.5 break-words">
+            {event.details}
+          </p>
         )}
       </div>
       {showTimestamp && (
@@ -168,7 +198,7 @@ function ActionEventRow({
         </span>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -179,10 +209,10 @@ export function createActionEvent(
   type: ActionEventType,
   message: string,
   options?: {
-    playerName?: string;
-    playerColor?: string;
-    details?: string;
-  }
+    playerName?: string
+    playerColor?: string
+    details?: string
+  },
 ): ActionEvent {
   return {
     id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -190,7 +220,7 @@ export function createActionEvent(
     type,
     message,
     ...options,
-  };
+  }
 }
 
 // ============================================================
@@ -199,14 +229,14 @@ export function createActionEvent(
 // ============================================================
 
 export function parseTurnEvents(
-  events: string[],
+  events: Array<string>,
   playerName?: string,
   playerColor?: string,
-  baseTimestamp?: number
-): ActionEvent[] {
+  baseTimestamp?: number,
+): Array<ActionEvent> {
   return events.map((eventStr, index) => {
-    const type = inferEventType(eventStr);
-    const timestamp = (baseTimestamp || Date.now()) + index * 100;
+    const type = inferEventType(eventStr)
+    const timestamp = (baseTimestamp || Date.now()) + index * 100
 
     return {
       id: `${timestamp}-${index}`,
@@ -215,24 +245,35 @@ export function parseTurnEvents(
       message: eventStr,
       playerName,
       playerColor,
-    };
-  });
+    }
+  })
 }
 
 function inferEventType(message: string): ActionEventType {
-  const lowerMessage = message.toLowerCase();
+  const lowerMessage = message.toLowerCase()
 
-  if (lowerMessage.includes("rolled") || lowerMessage.includes("dice")) return "roll";
-  if (lowerMessage.includes("moved") || lowerMessage.includes("landed")) return "move";
-  if (lowerMessage.includes("bought") || lowerMessage.includes("purchased")) return "purchase";
-  if (lowerMessage.includes("rent") || lowerMessage.includes("paid")) return "rent";
-  if (lowerMessage.includes("chance") || lowerMessage.includes("community chest") || lowerMessage.includes("drew")) return "card";
-  if (lowerMessage.includes("jail")) return "jail";
-  if (lowerMessage.includes("built") || lowerMessage.includes("house")) return "build";
-  if (lowerMessage.includes("mortgage")) return "mortgage";
-  if (lowerMessage.includes("trade")) return "trade";
-  if (lowerMessage.includes("bankrupt")) return "bankrupt";
-  if (lowerMessage.includes("game") || lowerMessage.includes("turn")) return "system";
+  if (lowerMessage.includes('rolled') || lowerMessage.includes('dice'))
+    return 'roll'
+  if (lowerMessage.includes('moved') || lowerMessage.includes('landed'))
+    return 'move'
+  if (lowerMessage.includes('bought') || lowerMessage.includes('purchased'))
+    return 'purchase'
+  if (lowerMessage.includes('rent') || lowerMessage.includes('paid'))
+    return 'rent'
+  if (
+    lowerMessage.includes('chance') ||
+    lowerMessage.includes('community chest') ||
+    lowerMessage.includes('drew')
+  )
+    return 'card'
+  if (lowerMessage.includes('jail')) return 'jail'
+  if (lowerMessage.includes('built') || lowerMessage.includes('house'))
+    return 'build'
+  if (lowerMessage.includes('mortgage')) return 'mortgage'
+  if (lowerMessage.includes('trade')) return 'trade'
+  if (lowerMessage.includes('bankrupt')) return 'bankrupt'
+  if (lowerMessage.includes('game') || lowerMessage.includes('turn'))
+    return 'system'
 
-  return "system";
+  return 'system'
 }

@@ -9,4 +9,4 @@ export {
   type StrategyProfileCardProps,
   type StrategyComparisonTableProps,
   type StrategySummaryBadgesProps,
-} from "./StrategyRadar";
+} from './StrategyRadar'

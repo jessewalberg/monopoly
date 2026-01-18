@@ -1,28 +1,30 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface LeaderboardEntry {
-  _id: string;
-  modelId: string;
-  modelDisplayName: string;
-  modelProvider: string;
-  gamesPlayed: number;
-  wins: number;
-  winRate: number;
-  avgFinalNetWorth: number;
-  avgDecisionTimeMs: number;
+  _id: string
+  modelId: string
+  modelDisplayName: string
+  modelProvider: string
+  gamesPlayed: number
+  wins: number
+  winRate: number
+  avgFinalNetWorth: number
+  avgDecisionTimeMs: number
 }
 
 export interface LeaderboardTableProps {
-  data: LeaderboardEntry[];
-  sortBy?: "wins" | "winRate" | "gamesPlayed" | "avgNetWorth";
-  onSortChange?: (sortBy: "wins" | "winRate" | "gamesPlayed" | "avgNetWorth") => void;
-  showRank?: boolean;
-  compact?: boolean;
+  data: Array<LeaderboardEntry>
+  sortBy?: 'wins' | 'winRate' | 'gamesPlayed' | 'avgNetWorth'
+  onSortChange?: (
+    sortBy: 'wins' | 'winRate' | 'gamesPlayed' | 'avgNetWorth',
+  ) => void
+  showRank?: boolean
+  compact?: boolean
 }
 
 // ============================================================
@@ -31,34 +33,34 @@ export interface LeaderboardTableProps {
 
 export function LeaderboardTable({
   data,
-  sortBy = "wins",
+  sortBy = 'wins',
   onSortChange,
   showRank = true,
   compact = false,
 }: LeaderboardTableProps) {
-  const [localSortBy, setLocalSortBy] = useState(sortBy);
+  const [localSortBy, setLocalSortBy] = useState(sortBy)
 
   const handleSort = (newSortBy: typeof sortBy) => {
-    setLocalSortBy(newSortBy);
-    onSortChange?.(newSortBy);
-  };
+    setLocalSortBy(newSortBy)
+    onSortChange?.(newSortBy)
+  }
 
   // Sort data locally if no external handler
   const sortedData = onSortChange
     ? data
     : [...data].sort((a, b) => {
         switch (localSortBy) {
-          case "winRate":
-            return b.winRate - a.winRate;
-          case "gamesPlayed":
-            return b.gamesPlayed - a.gamesPlayed;
-          case "avgNetWorth":
-            return b.avgFinalNetWorth - a.avgFinalNetWorth;
-          case "wins":
+          case 'winRate':
+            return b.winRate - a.winRate
+          case 'gamesPlayed':
+            return b.gamesPlayed - a.gamesPlayed
+          case 'avgNetWorth':
+            return b.avgFinalNetWorth - a.avgFinalNetWorth
+          case 'wins':
           default:
-            return b.wins - a.wins;
+            return b.wins - a.wins
         }
-      });
+      })
 
   if (data.length === 0) {
     return (
@@ -67,7 +69,7 @@ export function LeaderboardTable({
         <p>No leaderboard data yet</p>
         <p className="text-sm mt-1">Play some games to see rankings!</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -79,36 +81,36 @@ export function LeaderboardTable({
             <th className="pb-3 px-2">Model</th>
             <th
               className={`pb-3 px-2 cursor-pointer hover:text-white ${
-                localSortBy === "gamesPlayed" ? "text-white" : ""
+                localSortBy === 'gamesPlayed' ? 'text-white' : ''
               }`}
-              onClick={() => handleSort("gamesPlayed")}
+              onClick={() => handleSort('gamesPlayed')}
             >
-              Games {localSortBy === "gamesPlayed" && "▼"}
+              Games {localSortBy === 'gamesPlayed' && '▼'}
             </th>
             <th
               className={`pb-3 px-2 cursor-pointer hover:text-white ${
-                localSortBy === "wins" ? "text-white" : ""
+                localSortBy === 'wins' ? 'text-white' : ''
               }`}
-              onClick={() => handleSort("wins")}
+              onClick={() => handleSort('wins')}
             >
-              Wins {localSortBy === "wins" && "▼"}
+              Wins {localSortBy === 'wins' && '▼'}
             </th>
             <th
               className={`pb-3 px-2 cursor-pointer hover:text-white ${
-                localSortBy === "winRate" ? "text-white" : ""
+                localSortBy === 'winRate' ? 'text-white' : ''
               }`}
-              onClick={() => handleSort("winRate")}
+              onClick={() => handleSort('winRate')}
             >
-              Win % {localSortBy === "winRate" && "▼"}
+              Win % {localSortBy === 'winRate' && '▼'}
             </th>
             {!compact && (
               <th
                 className={`pb-3 px-2 cursor-pointer hover:text-white ${
-                  localSortBy === "avgNetWorth" ? "text-white" : ""
+                  localSortBy === 'avgNetWorth' ? 'text-white' : ''
                 }`}
-                onClick={() => handleSort("avgNetWorth")}
+                onClick={() => handleSort('avgNetWorth')}
               >
-                Avg Worth {localSortBy === "avgNetWorth" && "▼"}
+                Avg Worth {localSortBy === 'avgNetWorth' && '▼'}
               </th>
             )}
             {!compact && <th className="pb-3 px-2">Win Rate</th>}
@@ -127,7 +129,7 @@ export function LeaderboardTable({
         </tbody>
       </table>
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -135,14 +137,19 @@ export function LeaderboardTable({
 // ============================================================
 
 interface LeaderboardRowProps {
-  entry: LeaderboardEntry;
-  rank: number;
-  showRank: boolean;
-  compact: boolean;
+  entry: LeaderboardEntry
+  rank: number
+  showRank: boolean
+  compact: boolean
 }
 
-function LeaderboardRow({ entry, rank, showRank, compact }: LeaderboardRowProps) {
-  const winRatePercent = Math.round(entry.winRate * 100);
+function LeaderboardRow({
+  entry,
+  rank,
+  showRank,
+  compact,
+}: LeaderboardRowProps) {
+  const winRatePercent = Math.round(entry.winRate * 100)
 
   return (
     <tr className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
@@ -169,10 +176,10 @@ function LeaderboardRow({ entry, rank, showRank, compact }: LeaderboardRowProps)
         <span
           className={`font-medium ${
             winRatePercent >= 50
-              ? "text-green-400"
+              ? 'text-green-400'
               : winRatePercent >= 25
-              ? "text-yellow-400"
-              : "text-red-400"
+                ? 'text-yellow-400'
+                : 'text-red-400'
           }`}
         >
           {winRatePercent}%
@@ -189,7 +196,7 @@ function LeaderboardRow({ entry, rank, showRank, compact }: LeaderboardRowProps)
         </td>
       )}
     </tr>
-  );
+  )
 }
 
 // ============================================================
@@ -202,46 +209,46 @@ function RankBadge({ rank }: { rank: number }) {
       <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-500/20 text-yellow-400 font-bold text-sm">
         🥇
       </span>
-    );
+    )
   }
   if (rank === 2) {
     return (
       <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-400/20 text-slate-300 font-bold text-sm">
         🥈
       </span>
-    );
+    )
   }
   if (rank === 3) {
     return (
       <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-700/20 text-amber-600 font-bold text-sm">
         🥉
       </span>
-    );
+    )
   }
   return (
     <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-700/50 text-slate-400 font-medium text-sm">
       {rank}
     </span>
-  );
+  )
 }
 
 function WinRateBar({ winRate }: { winRate: number }) {
-  const percent = Math.round(winRate * 100);
+  const percent = Math.round(winRate * 100)
 
   return (
     <div className="relative h-2 bg-slate-700 rounded-full overflow-hidden">
       <div
         className={`absolute inset-y-0 left-0 rounded-full transition-all ${
           percent >= 50
-            ? "bg-green-500"
+            ? 'bg-green-500'
             : percent >= 25
-            ? "bg-yellow-500"
-            : "bg-red-500"
+              ? 'bg-yellow-500'
+              : 'bg-red-500'
         }`}
         style={{ width: `${percent}%` }}
       />
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -249,12 +256,15 @@ function WinRateBar({ winRate }: { winRate: number }) {
 // ============================================================
 
 export interface CompactLeaderboardProps {
-  data: LeaderboardEntry[];
-  limit?: number;
+  data: Array<LeaderboardEntry>
+  limit?: number
 }
 
-export function CompactLeaderboard({ data, limit = 5 }: CompactLeaderboardProps) {
-  const topEntries = data.slice(0, limit);
+export function CompactLeaderboard({
+  data,
+  limit = 5,
+}: CompactLeaderboardProps) {
+  const topEntries = data.slice(0, limit)
 
   return (
     <div className="space-y-2">
@@ -286,5 +296,5 @@ export function CompactLeaderboard({ data, limit = 5 }: CompactLeaderboardProps)
         </div>
       ))}
     </div>
-  );
+  )
 }

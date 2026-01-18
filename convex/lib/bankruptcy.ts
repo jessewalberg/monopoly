@@ -1,20 +1,16 @@
-import type { Id } from "../_generated/dataModel";
-import { HOTEL_LEVEL } from "./constants";
-import {
-  getPurchasePrice,
-  getMortgageValue,
-  getHouseCost,
-} from "./board";
-import type { PropertyState } from "./rent";
-import { getOwnedProperties } from "./rent";
+import { HOTEL_LEVEL } from './constants'
+import { getHouseCost, getMortgageValue, getPurchasePrice } from './board'
+import { getOwnedProperties } from './rent'
+import type { PropertyState } from './rent'
+import type { Id } from '../_generated/dataModel'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface PlayerState {
-  _id: Id<"players">;
-  cash: number;
+  _id: Id<'players'>
+  cash: number
 }
 
 // ============================================================
@@ -27,31 +23,31 @@ export interface PlayerState {
  */
 export function calculateNetWorth(
   player: PlayerState,
-  properties: PropertyState[]
+  properties: Array<PropertyState>,
 ): number {
-  let netWorth = player.cash;
+  let netWorth = player.cash
 
-  const ownedProperties = getOwnedProperties(player._id, properties);
+  const ownedProperties = getOwnedProperties(player._id, properties)
 
   for (const prop of ownedProperties) {
     if (prop.isMortgaged) {
       // Mortgaged properties are worth half their value (mortgage amount)
-      netWorth += getMortgageValue(prop.position);
+      netWorth += getMortgageValue(prop.position)
     } else {
       // Unmortgaged properties worth full purchase price
-      netWorth += getPurchasePrice(prop.position);
+      netWorth += getPurchasePrice(prop.position)
     }
 
     // Add building value (houses sell for half cost)
     if (prop.houses > 0) {
-      const houseCost = getHouseCost(prop.position);
-      const buildingCount = prop.houses >= HOTEL_LEVEL ? 5 : prop.houses;
-      const buildingValue = Math.floor((buildingCount * houseCost) / 2);
-      netWorth += buildingValue;
+      const houseCost = getHouseCost(prop.position)
+      const buildingCount = prop.houses >= HOTEL_LEVEL ? 5 : prop.houses
+      const buildingValue = Math.floor((buildingCount * houseCost) / 2)
+      netWorth += buildingValue
     }
   }
 
-  return netWorth;
+  return netWorth
 }
 
 /**
@@ -60,27 +56,27 @@ export function calculateNetWorth(
  */
 export function calculateLiquidationValue(
   player: PlayerState,
-  properties: PropertyState[]
+  properties: Array<PropertyState>,
 ): number {
-  let liquidValue = player.cash;
+  let liquidValue = player.cash
 
-  const ownedProperties = getOwnedProperties(player._id, properties);
+  const ownedProperties = getOwnedProperties(player._id, properties)
 
   for (const prop of ownedProperties) {
     // Can mortgage unmortgaged properties
     if (!prop.isMortgaged) {
-      liquidValue += getMortgageValue(prop.position);
+      liquidValue += getMortgageValue(prop.position)
     }
 
     // Can sell buildings at half price
     if (prop.houses > 0) {
-      const houseCost = getHouseCost(prop.position);
-      const buildingCount = prop.houses >= HOTEL_LEVEL ? 5 : prop.houses;
-      liquidValue += Math.floor((buildingCount * houseCost) / 2);
+      const houseCost = getHouseCost(prop.position)
+      const buildingCount = prop.houses >= HOTEL_LEVEL ? 5 : prop.houses
+      liquidValue += Math.floor((buildingCount * houseCost) / 2)
     }
   }
 
-  return liquidValue;
+  return liquidValue
 }
 
 /**
@@ -89,10 +85,10 @@ export function calculateLiquidationValue(
 export function canAfford(
   player: PlayerState,
   amount: number,
-  properties: PropertyState[]
+  properties: Array<PropertyState>,
 ): boolean {
-  const liquidValue = calculateLiquidationValue(player, properties);
-  return liquidValue >= amount;
+  const liquidValue = calculateLiquidationValue(player, properties)
+  return liquidValue >= amount
 }
 
 /**
@@ -101,9 +97,9 @@ export function canAfford(
 export function isBankrupt(
   player: PlayerState,
   debtAmount: number,
-  properties: PropertyState[]
+  properties: Array<PropertyState>,
 ): boolean {
-  return !canAfford(player, debtAmount, properties);
+  return !canAfford(player, debtAmount, properties)
 }
 
 // ============================================================
@@ -111,10 +107,10 @@ export function isBankrupt(
 // ============================================================
 
 export interface LiquidationAction {
-  type: "sell_house" | "mortgage";
-  propertyId: Id<"properties">;
-  propertyName: string;
-  cashGained: number;
+  type: 'sell_house' | 'mortgage'
+  propertyId: Id<'properties'>
+  propertyName: string
+  cashGained: number
 }
 
 /**
@@ -124,46 +120,46 @@ export interface LiquidationAction {
 export function getSuggestedLiquidation(
   player: PlayerState,
   targetAmount: number,
-  properties: PropertyState[]
-): LiquidationAction[] {
-  const actions: LiquidationAction[] = [];
-  let currentCash = player.cash;
-  const ownedProperties = [...getOwnedProperties(player._id, properties)];
+  properties: Array<PropertyState>,
+): Array<LiquidationAction> {
+  const actions: Array<LiquidationAction> = []
+  let currentCash = player.cash
+  const ownedProperties = [...getOwnedProperties(player._id, properties)]
 
   // If already have enough, no liquidation needed
   if (currentCash >= targetAmount) {
-    return [];
+    return []
   }
 
   // First, try selling houses (must sell evenly, so we do one at a time from highest)
   // Sort by houses descending
   const propertiesWithHouses = ownedProperties
     .filter((p) => p.houses > 0)
-    .sort((a, b) => b.houses - a.houses);
+    .sort((a, b) => b.houses - a.houses)
 
   while (currentCash < targetAmount && propertiesWithHouses.length > 0) {
     // Find property with most houses
-    const prop = propertiesWithHouses[0];
-    if (prop.houses === 0) break;
+    const prop = propertiesWithHouses[0]
+    if (prop.houses === 0) break
 
-    const houseCost = getHouseCost(prop.position);
-    const sellValue = Math.floor(houseCost / 2);
+    const houseCost = getHouseCost(prop.position)
+    const sellValue = Math.floor(houseCost / 2)
 
     actions.push({
-      type: "sell_house",
+      type: 'sell_house',
       propertyId: prop._id,
       propertyName: prop.name,
       cashGained: sellValue,
-    });
+    })
 
-    currentCash += sellValue;
-    prop.houses--;
+    currentCash += sellValue
+    prop.houses--
 
     // Re-sort
-    propertiesWithHouses.sort((a, b) => b.houses - a.houses);
+    propertiesWithHouses.sort((a, b) => b.houses - a.houses)
     // Remove if no more houses
     if (propertiesWithHouses[0]?.houses === 0) {
-      propertiesWithHouses.shift();
+      propertiesWithHouses.shift()
     }
   }
 
@@ -171,25 +167,27 @@ export function getSuggestedLiquidation(
   if (currentCash < targetAmount) {
     const unmortgagedProps = ownedProperties
       .filter((p) => !p.isMortgaged && p.houses === 0)
-      .sort((a, b) => getPurchasePrice(a.position) - getPurchasePrice(b.position));
+      .sort(
+        (a, b) => getPurchasePrice(a.position) - getPurchasePrice(b.position),
+      )
 
     for (const prop of unmortgagedProps) {
-      if (currentCash >= targetAmount) break;
+      if (currentCash >= targetAmount) break
 
-      const mortgageValue = getMortgageValue(prop.position);
+      const mortgageValue = getMortgageValue(prop.position)
 
       actions.push({
-        type: "mortgage",
+        type: 'mortgage',
         propertyId: prop._id,
         propertyName: prop.name,
         cashGained: mortgageValue,
-      });
+      })
 
-      currentCash += mortgageValue;
+      currentCash += mortgageValue
     }
   }
 
-  return actions;
+  return actions
 }
 
 // ============================================================
@@ -197,11 +195,11 @@ export function getSuggestedLiquidation(
 // ============================================================
 
 export interface BankruptcyResult {
-  isBankrupt: boolean;
-  canResolve: boolean;
-  amountOwed: number;
-  amountCanPay: number;
-  liquidationActions: LiquidationAction[];
+  isBankrupt: boolean
+  canResolve: boolean
+  amountOwed: number
+  amountCanPay: number
+  liquidationActions: Array<LiquidationAction>
 }
 
 /**
@@ -210,11 +208,11 @@ export interface BankruptcyResult {
 export function analyzeBankruptcy(
   player: PlayerState,
   debtAmount: number,
-  properties: PropertyState[]
+  properties: Array<PropertyState>,
 ): BankruptcyResult {
-  const liquidValue = calculateLiquidationValue(player, properties);
-  const canResolve = liquidValue >= debtAmount;
-  const amountCanPay = Math.min(liquidValue, debtAmount);
+  const liquidValue = calculateLiquidationValue(player, properties)
+  const canResolve = liquidValue >= debtAmount
+  const amountCanPay = Math.min(liquidValue, debtAmount)
 
   return {
     isBankrupt: !canResolve,
@@ -224,15 +222,15 @@ export function analyzeBankruptcy(
     liquidationActions: canResolve
       ? getSuggestedLiquidation(player, debtAmount, properties)
       : getSuggestedLiquidation(player, liquidValue, properties), // Liquidate everything
-  };
+  }
 }
 
 /**
  * Get all properties that would transfer to creditor on bankruptcy
  */
 export function getPropertiesForBankruptcyTransfer(
-  bankruptPlayerId: Id<"players">,
-  properties: PropertyState[]
-): PropertyState[] {
-  return getOwnedProperties(bankruptPlayerId, properties);
+  bankruptPlayerId: Id<'players'>,
+  properties: Array<PropertyState>,
+): Array<PropertyState> {
+  return getOwnedProperties(bankruptPlayerId, properties)
 }

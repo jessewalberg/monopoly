@@ -1,71 +1,68 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, useMutation } from "@tanstack/react-query";
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
-import { Board } from "../../components/game/Board";
-import { PlayerPanel } from "../../components/game/PlayerPanel";
-import { ActionLog, parseTurnEvents } from "../../components/game/ActionLog";
-import { DiceDisplay } from "../../components/game/DiceDisplay";
-import { GameControlsCompact } from "../../components/game/GameControls";
-import { Button } from "../../components/ui/Button";
-import { Badge } from "../../components/ui/Badge";
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { convexQuery, useConvexMutation } from '@convex-dev/react-query'
+import { api } from '../../../convex/_generated/api'
+import { Board } from '../../components/game/Board'
+import { PlayerPanel } from '../../components/game/PlayerPanel'
+import { ActionLog, parseTurnEvents } from '../../components/game/ActionLog'
+import { DiceDisplay } from '../../components/game/DiceDisplay'
+import { GameControlsCompact } from '../../components/game/GameControls'
+import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/Badge'
+import type { Id } from '../../../convex/_generated/dataModel'
 
 // ============================================================
 // ROUTE DEFINITION
 // ============================================================
 
-export const Route = createFileRoute("/play/$gameId")({
+export const Route = createFileRoute('/play/$gameId')({
   component: LiveGamePage,
-});
+})
 
 // ============================================================
 // LIVE GAME PAGE
 // ============================================================
 
 function LiveGamePage() {
-  const { gameId } = Route.useParams();
-  const typedGameId = gameId as Id<"games">;
+  const { gameId } = Route.useParams()
+  const typedGameId = gameId as Id<'games'>
 
   // Get full game state (auto-updates via Convex)
   const { data: gameState } = useSuspenseQuery(
-    convexQuery(api.games.getFullState, { gameId: typedGameId })
-  );
+    convexQuery(api.games.getFullState, { gameId: typedGameId }),
+  )
 
   // Get recent turns for log
   const { data: recentTurns } = useSuspenseQuery(
-    convexQuery(api.turns.getByGame, { gameId: typedGameId, limit: 20 })
-  );
+    convexQuery(api.turns.getByGame, { gameId: typedGameId, limit: 20 }),
+  )
 
   // Game control mutations
   const pauseGame = useMutation({
     mutationFn: useConvexMutation(api.gameEngine.pauseGame),
-  });
+  })
   const resumeGame = useMutation({
     mutationFn: useConvexMutation(api.gameEngine.resumeGame),
-  });
+  })
   const abandonGame = useMutation({
     mutationFn: useConvexMutation(api.gameEngine.abandonGame),
-  });
+  })
 
   if (!gameState) {
     return (
       <div className="p-8 text-center">
         <h1 className="text-2xl font-bold text-white mb-4">Game Not Found</h1>
-        <Link
-          to="/play"
-          className="text-green-400 hover:text-green-300"
-        >
+        <Link to="/play" className="text-green-400 hover:text-green-300">
           Start a new game
         </Link>
       </div>
-    );
+    )
   }
 
-  const { game, players, properties, currentTurn } = gameState;
+  const { game, players, properties, currentTurn } = gameState
 
   // Handle different game states
-  if (game.status === "setup") {
+  if (game.status === 'setup') {
     return (
       <div className="p-8 text-center">
         <h1 className="text-2xl font-bold text-white mb-4">Game Ready</h1>
@@ -78,11 +75,11 @@ function LiveGamePage() {
           Start Game
         </Button>
       </div>
-    );
+    )
   }
 
-  if (game.status === "completed") {
-    const winner = players.find((p) => p._id === game.winnerId);
+  if (game.status === 'completed') {
+    const winner = players.find((p) => p._id === game.winnerId)
     return (
       <div className="p-8">
         <div className="max-w-2xl mx-auto text-center">
@@ -94,7 +91,9 @@ function LiveGamePage() {
                 className="inline-flex items-center gap-3 px-6 py-3 rounded-full text-white"
                 style={{ backgroundColor: winner.tokenColor }}
               >
-                <span className="text-xl font-bold">{winner.modelDisplayName}</span>
+                <span className="text-xl font-bold">
+                  {winner.modelDisplayName}
+                </span>
                 <span>wins!</span>
               </div>
             </div>
@@ -117,10 +116,10 @@ function LiveGamePage() {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
-  if (game.status === "abandoned") {
+  if (game.status === 'abandoned') {
     return (
       <div className="p-8 text-center">
         <h1 className="text-2xl font-bold text-white mb-4">Game Abandoned</h1>
@@ -132,12 +131,13 @@ function LiveGamePage() {
           Start New Game
         </Link>
       </div>
-    );
+    )
   }
 
   // Game is in progress
-  const activePlayers = players.filter((p) => !p.isBankrupt);
-  const currentPlayer = activePlayers[game.currentPlayerIndex % activePlayers.length];
+  const activePlayers = players.filter((p) => !p.isBankrupt)
+  const currentPlayer =
+    activePlayers[game.currentPlayerIndex % activePlayers.length]
 
   // Transform players for Board component
   const boardPlayers = players.map((p) => ({
@@ -145,9 +145,9 @@ function LiveGamePage() {
     position: p.position,
     modelDisplayName: p.modelDisplayName,
     tokenColor: p.tokenColor,
-    textColor: "#FFFFFF",
+    textColor: '#FFFFFF',
     inJail: p.inJail,
-  }));
+  }))
 
   // Transform properties for Board component
   const boardProperties = properties.map((prop) => ({
@@ -155,21 +155,24 @@ function LiveGamePage() {
     ownerId: prop.ownerId,
     houses: prop.houses,
     isMortgaged: prop.isMortgaged,
-  }));
+  }))
 
   // Transform turns for ActionLog using the helper
   // Reverse turns so oldest appears first (chronological order)
-  const logEvents = [...recentTurns].reverse().flatMap((turn) => {
-    const player = players.find((p) => p._id === turn.playerId);
-    return parseTurnEvents(
-      turn.events,
-      player?.modelDisplayName,
-      player?.tokenColor,
-      turn.startedAt
-    );
-  }).slice(-50); // Take the last 50 events (most recent)
+  const logEvents = [...recentTurns]
+    .reverse()
+    .flatMap((turn) => {
+      const player = players.find((p) => p._id === turn.playerId)
+      return parseTurnEvents(
+        turn.events,
+        player?.modelDisplayName,
+        player?.tokenColor,
+        turn.startedAt,
+      )
+    })
+    .slice(-50) // Take the last 50 events (most recent)
 
-  const isPaused = game.isPaused === true;
+  const isPaused = game.isPaused === true
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col lg:flex-row gap-4 p-4">
@@ -187,28 +190,28 @@ function LiveGamePage() {
               </Badge>
             ) : (
               <Badge
-                variant={game.currentPhase === "rolling" ? "success" : "neutral"}
+                variant={
+                  game.currentPhase === 'rolling' ? 'success' : 'neutral'
+                }
                 size="md"
               >
-                {game.currentPhase.replace("_", " ")}
+                {game.currentPhase.replace('_', ' ')}
               </Badge>
             )}
-            {currentPlayer && (
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: currentPlayer.tokenColor }}
-                />
-                <span className="text-white text-sm">
-                  {currentPlayer.modelDisplayName}'s turn
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: currentPlayer.tokenColor }}
+              />
+              <span className="text-white text-sm">
+                {currentPlayer.modelDisplayName}'s turn
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
             <GameControlsCompact
-              isPlaying={game.status === "in_progress" && !isPaused}
+              isPlaying={!isPaused}
               isPaused={isPaused}
               onPause={() => pauseGame.mutate({ gameId: typedGameId })}
               onPlay={() => resumeGame.mutate({ gameId: typedGameId })}
@@ -217,8 +220,8 @@ function LiveGamePage() {
               variant="danger"
               size="sm"
               onClick={() => {
-                if (confirm("Are you sure you want to abandon this game?")) {
-                  abandonGame.mutate({ gameId: typedGameId });
+                if (confirm('Are you sure you want to abandon this game?')) {
+                  abandonGame.mutate({ gameId: typedGameId })
                 }
               }}
             >
@@ -232,7 +235,7 @@ function LiveGamePage() {
           <Board
             players={boardPlayers}
             properties={boardProperties}
-            currentPlayerId={currentPlayer?._id}
+            currentPlayerId={currentPlayer._id}
             turnNumber={game.currentTurnNumber}
             phase={game.currentPhase}
           >
@@ -242,7 +245,9 @@ function LiveGamePage() {
               {isPaused ? (
                 <div className="flex flex-col items-center gap-4 py-4 bg-white/80 rounded-lg px-6">
                   <div className="text-4xl">⏸️</div>
-                  <p className="text-lg font-semibold text-yellow-600">Game Paused</p>
+                  <p className="text-lg font-semibold text-yellow-600">
+                    Game Paused
+                  </p>
                   <Button
                     variant="primary"
                     size="lg"
@@ -257,20 +262,18 @@ function LiveGamePage() {
                   {currentTurn?.diceRoll && (
                     <DiceDisplay
                       dice={currentTurn.diceRoll as [number, number]}
-                      isRolling={game.currentPhase === "rolling"}
+                      isRolling={game.currentPhase === 'rolling'}
                     />
                   )}
-                  {currentPlayer && (
-                    <div className="text-center bg-white/60 rounded-lg px-4 py-2">
-                      <p className="text-sm text-slate-600">Current Player</p>
-                      <p
-                        className="font-bold text-lg"
-                        style={{ color: currentPlayer.tokenColor }}
-                      >
-                        {currentPlayer.modelDisplayName}
-                      </p>
-                    </div>
-                  )}
+                  <div className="text-center bg-white/60 rounded-lg px-4 py-2">
+                    <p className="text-sm text-slate-600">Current Player</p>
+                    <p
+                      className="font-bold text-lg"
+                      style={{ color: currentPlayer.tokenColor }}
+                    >
+                      {currentPlayer.modelDisplayName}
+                    </p>
+                  </div>
                 </>
               )}
             </div>
@@ -285,8 +288,8 @@ function LiveGamePage() {
           <h3 className="text-sm font-medium text-slate-400 px-1">Players</h3>
           {players.map((player) => {
             const playerProperties = properties.filter(
-              (p) => p.ownerId === player._id
-            );
+              (p) => p.ownerId === player._id,
+            )
             return (
               <PlayerPanel
                 key={player._id}
@@ -295,7 +298,7 @@ function LiveGamePage() {
                   modelId: player.modelId,
                   modelDisplayName: player.modelDisplayName,
                   tokenColor: player.tokenColor,
-                  textColor: "#FFFFFF",
+                  textColor: '#FFFFFF',
                   cash: player.cash,
                   position: player.position,
                   inJail: player.inJail,
@@ -309,21 +312,18 @@ function LiveGamePage() {
                   houses: p.houses,
                   isMortgaged: p.isMortgaged,
                 }))}
-                isCurrentTurn={currentPlayer?._id === player._id}
+                isCurrentTurn={currentPlayer._id === player._id}
                 compact
               />
-            );
+            )
           })}
         </div>
 
         {/* Action Log */}
         <div className="h-64 lg:h-80">
-          <ActionLog
-            events={logEvents}
-            maxHeight="100%"
-          />
+          <ActionLog events={logEvents} maxHeight="100%" />
         </div>
       </div>
     </div>
-  );
+  )
 }

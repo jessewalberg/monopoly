@@ -6,4 +6,4 @@
 // - Auction logic
 // - Bankruptcy handling
 
-export {};
+export {}

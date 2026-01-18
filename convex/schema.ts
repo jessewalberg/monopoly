@@ -1,5 +1,5 @@
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { defineSchema, defineTable } from 'convex/server'
+import { v } from 'convex/values'
 
 export default defineSchema({
   // ============================================================
@@ -8,28 +8,28 @@ export default defineSchema({
 
   games: defineTable({
     status: v.union(
-      v.literal("setup"),
-      v.literal("in_progress"),
-      v.literal("completed"),
-      v.literal("abandoned")
+      v.literal('setup'),
+      v.literal('in_progress'),
+      v.literal('completed'),
+      v.literal('abandoned'),
     ),
     currentPlayerIndex: v.number(),
     currentTurnNumber: v.number(),
     currentPhase: v.union(
-      v.literal("pre_roll"),
-      v.literal("rolling"),
-      v.literal("post_roll"),
-      v.literal("turn_end"),
-      v.literal("game_over")
+      v.literal('pre_roll'),
+      v.literal('rolling'),
+      v.literal('post_roll'),
+      v.literal('turn_end'),
+      v.literal('game_over'),
     ),
-    winnerId: v.optional(v.id("players")),
+    winnerId: v.optional(v.id('players')),
     endingReason: v.optional(
       v.union(
-        v.literal("last_player_standing"),
-        v.literal("turn_limit_reached"),
-        v.literal("manual_stop"),
-        v.literal("error")
-      )
+        v.literal('last_player_standing'),
+        v.literal('turn_limit_reached'),
+        v.literal('manual_stop'),
+        v.literal('error'),
+      ),
     ),
     config: v.object({
       turnLimit: v.optional(v.number()),
@@ -47,16 +47,16 @@ export default defineSchema({
     pendingDecision: v.optional(
       v.object({
         type: v.union(
-          v.literal("buy_property"),
-          v.literal("auction_bid"),
-          v.literal("jail_strategy"),
-          v.literal("pre_roll_actions"),
-          v.literal("post_roll_actions"),
-          v.literal("trade_response"),
-          v.literal("bankruptcy_resolution")
+          v.literal('buy_property'),
+          v.literal('auction_bid'),
+          v.literal('jail_strategy'),
+          v.literal('pre_roll_actions'),
+          v.literal('post_roll_actions'),
+          v.literal('trade_response'),
+          v.literal('bankruptcy_resolution'),
         ),
         context: v.string(), // JSON with decision context
-      })
+      }),
     ),
     createdAt: v.number(),
     startedAt: v.optional(v.number()),
@@ -66,7 +66,7 @@ export default defineSchema({
   }),
 
   players: defineTable({
-    gameId: v.id("games"),
+    gameId: v.id('games'),
     modelId: v.string(),
     modelDisplayName: v.string(),
     modelProvider: v.string(),
@@ -86,28 +86,28 @@ export default defineSchema({
     finalNetWorth: v.optional(v.number()),
     bankruptcyTurn: v.optional(v.number()),
   })
-    .index("by_game", ["gameId"])
-    .index("by_game_turn_order", ["gameId", "turnOrder"]),
+    .index('by_game', ['gameId'])
+    .index('by_game_turn_order', ['gameId', 'turnOrder']),
 
   properties: defineTable({
-    gameId: v.id("games"),
+    gameId: v.id('games'),
     position: v.number(), // Board position 0-39
     name: v.string(),
     group: v.string(), // "brown", "lightBlue", "pink", etc., "railroad", "utility"
-    ownerId: v.optional(v.id("players")),
+    ownerId: v.optional(v.id('players')),
     houses: v.number(), // 0-4 houses, 5 = hotel
     isMortgaged: v.boolean(),
   })
-    .index("by_game", ["gameId"])
-    .index("by_owner", ["ownerId"]),
+    .index('by_game', ['gameId'])
+    .index('by_owner', ['ownerId']),
 
   // ============================================================
   // TURN & DECISION TRACKING (for replay and analytics)
   // ============================================================
 
   turns: defineTable({
-    gameId: v.id("games"),
-    playerId: v.id("players"),
+    gameId: v.id('games'),
+    playerId: v.id('players'),
     turnNumber: v.number(),
     diceRoll: v.optional(v.array(v.number())), // [die1, die2]
     wasDoubles: v.optional(v.boolean()),
@@ -122,22 +122,22 @@ export default defineSchema({
     startedAt: v.number(),
     endedAt: v.optional(v.number()),
   })
-    .index("by_game", ["gameId"])
-    .index("by_game_turn", ["gameId", "turnNumber"]),
+    .index('by_game', ['gameId'])
+    .index('by_game_turn', ['gameId', 'turnNumber']),
 
   decisions: defineTable({
-    gameId: v.id("games"),
-    playerId: v.id("players"),
-    turnId: v.id("turns"),
+    gameId: v.id('games'),
+    playerId: v.id('players'),
+    turnId: v.id('turns'),
     turnNumber: v.number(),
     decisionType: v.union(
-      v.literal("buy_property"),
-      v.literal("auction_bid"),
-      v.literal("jail_strategy"),
-      v.literal("pre_roll_actions"),
-      v.literal("post_roll_actions"),
-      v.literal("trade_response"),
-      v.literal("bankruptcy_resolution")
+      v.literal('buy_property'),
+      v.literal('auction_bid'),
+      v.literal('jail_strategy'),
+      v.literal('pre_roll_actions'),
+      v.literal('post_roll_actions'),
+      v.literal('trade_response'),
+      v.literal('bankruptcy_resolution'),
     ),
     context: v.string(), // JSON string with game state context
     optionsAvailable: v.array(v.string()),
@@ -149,69 +149,70 @@ export default defineSchema({
     completionTokens: v.number(),
     decisionTimeMs: v.number(),
   })
-    .index("by_game", ["gameId"])
-    .index("by_player", ["playerId"])
-    .index("by_type", ["decisionType"]),
+    .index('by_game', ['gameId'])
+    .index('by_player', ['playerId'])
+    .index('by_type', ['decisionType']),
 
   trades: defineTable({
-    gameId: v.id("games"),
+    gameId: v.id('games'),
     turnNumber: v.number(),
-    proposerId: v.id("players"),
-    recipientId: v.id("players"),
+    proposerId: v.id('players'),
+    recipientId: v.id('players'),
     // What proposer offers
     offerMoney: v.number(),
-    offerProperties: v.array(v.id("properties")),
+    offerProperties: v.array(v.id('properties')),
     offerGetOutOfJailCards: v.number(),
     // What proposer requests
     requestMoney: v.number(),
-    requestProperties: v.array(v.id("properties")),
+    requestProperties: v.array(v.id('properties')),
     requestGetOutOfJailCards: v.number(),
     status: v.union(
-      v.literal("pending"),
-      v.literal("accepted"),
-      v.literal("rejected"),
-      v.literal("countered")
+      v.literal('pending'),
+      v.literal('accepted'),
+      v.literal('rejected'),
+      v.literal('countered'),
     ),
     proposerReasoning: v.string(),
     recipientReasoning: v.optional(v.string()),
     counterDepth: v.optional(v.number()),
-  }).index("by_game", ["gameId"]),
+  }).index('by_game', ['gameId']),
 
   rentPayments: defineTable({
-    gameId: v.id("games"),
+    gameId: v.id('games'),
     turnNumber: v.number(),
-    payerId: v.id("players"),
-    receiverId: v.id("players"),
+    payerId: v.id('players'),
+    receiverId: v.id('players'),
     propertyName: v.string(),
     amount: v.number(),
     diceTotal: v.optional(v.number()), // For utilities
     payerCashAfter: v.number(),
     receiverCashAfter: v.number(),
-  }).index("by_game", ["gameId"]),
+  }).index('by_game', ['gameId']),
 
   propertyTransfers: defineTable({
-    gameId: v.id("games"),
+    gameId: v.id('games'),
     turnNumber: v.number(),
-    propertyId: v.id("properties"),
-    fromOwnerId: v.optional(v.id("players")),
-    toOwnerId: v.optional(v.id("players")),
+    propertyId: v.id('properties'),
+    fromOwnerId: v.optional(v.id('players')),
+    toOwnerId: v.optional(v.id('players')),
     reason: v.string(),
+    price: v.optional(v.number()),
     createdAt: v.number(),
   })
-    .index("by_game", ["gameId"])
-    .index("by_game_turn", ["gameId", "turnNumber"]),
+    .index('by_game', ['gameId'])
+    .index('by_game_turn', ['gameId', 'turnNumber']),
 
   propertyStateEvents: defineTable({
-    gameId: v.id("games"),
+    gameId: v.id('games'),
     turnNumber: v.number(),
-    propertyId: v.id("properties"),
+    propertyId: v.id('properties'),
     houses: v.optional(v.number()),
     isMortgaged: v.optional(v.boolean()),
     reason: v.string(),
     createdAt: v.number(),
   })
-    .index("by_game", ["gameId"])
-    .index("by_game_turn", ["gameId", "turnNumber"]),
+    .index('by_game', ['gameId'])
+    .index('by_game_turn', ['gameId', 'turnNumber']),
 
   // ============================================================
   // ANALYTICS AGGREGATES
@@ -244,8 +245,8 @@ export default defineSchema({
     avgGameLength: v.number(), // In turns
     updatedAt: v.number(),
   })
-    .index("by_model", ["modelId"])
-    .index("by_wins", ["wins"]),
+    .index('by_model', ['modelId'])
+    .index('by_wins', ['wins']),
 
   headToHead: defineTable({
     pairKey: v.string(), // Alphabetically sorted: "modelA|modelB"
@@ -258,7 +259,7 @@ export default defineSchema({
     totalGames: v.number(),
     avgGameLength: v.number(),
     updatedAt: v.number(),
-  }).index("by_pair", ["pairKey"]),
+  }).index('by_pair', ['pairKey']),
 
   propertyStats: defineTable({
     propertyName: v.string(),
@@ -273,6 +274,30 @@ export default defineSchema({
     ownerWinRate: v.number(), // % of games where owner won
     updatedAt: v.number(),
   })
-    .index("by_property", ["propertyName"])
-    .index("by_win_rate", ["ownerWinRate"]),
-});
+    .index('by_property', ['propertyName'])
+    .index('by_win_rate', ['ownerWinRate']),
+
+  globalStats: defineTable({
+    key: v.string(), // "global"
+    totalGames: v.number(),
+    completedGames: v.number(),
+    inProgressGames: v.number(),
+    abandonedGames: v.number(),
+    totalDecisions: v.number(),
+    totalTrades: v.number(),
+    acceptedTrades: v.number(),
+    totalRentPaid: v.number(),
+    avgGameLength: v.number(),
+    avgDurationMs: v.number(),
+    durationGames: v.number(),
+    totalModelsPlayed: v.number(),
+    mostWinningModel: v.optional(
+      v.object({
+        modelId: v.string(),
+        modelDisplayName: v.string(),
+        wins: v.number(),
+      }),
+    ),
+    updatedAt: v.number(),
+  }).index('by_key', ['key']),
+})

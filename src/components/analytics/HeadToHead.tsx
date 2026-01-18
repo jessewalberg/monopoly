@@ -6,4 +6,4 @@ export {
   type HeadToHeadMatrixData,
   type HeadToHeadMatrixProps,
   type HeadToHeadComparisonProps,
-} from "./HeadToHeadMatrix";
+} from './HeadToHeadMatrix'

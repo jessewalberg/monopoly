@@ -1,58 +1,70 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "../../../convex/_generated/api";
-import { Card, CardBody, CardHeader } from "../../components/ui/Card";
-import { Button } from "../../components/ui/Button";
-import { Badge } from "../../components/ui/Badge";
-import { useEffect, useState } from "react";
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { convexQuery } from '@convex-dev/react-query'
+import { useEffect, useState } from 'react'
+import { api } from '../../../convex/_generated/api'
+import { Card, CardBody, CardHeader } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/Badge'
 
 // ============================================================
 // ROUTE DEFINITION
 // ============================================================
 
-export const Route = createFileRoute("/play/")({
+export const Route = createFileRoute('/play/')({
   component: ArenaModePage,
-});
+})
 
 // ============================================================
 // BUDGET MODELS (for display only)
 // ============================================================
 
 const BUDGET_MODELS = [
-  { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: "OpenAI" },
-  { id: "google/gemini-2.0-flash-001", name: "Gemini 2.0 Flash", provider: "Google" },
-  { id: "google/gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite", provider: "Google" },
-  { id: "anthropic/claude-3.5-haiku", name: "Claude 3.5 Haiku", provider: "Anthropic" },
-  { id: "x-ai/grok-3-mini", name: "Grok 3 Mini", provider: "xAI" },
-];
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI' },
+  {
+    id: 'google/gemini-2.0-flash-001',
+    name: 'Gemini 2.0 Flash',
+    provider: 'Google',
+  },
+  {
+    id: 'google/gemini-2.5-flash-lite',
+    name: 'Gemini 2.5 Flash Lite',
+    provider: 'Google',
+  },
+  {
+    id: 'anthropic/claude-3.5-haiku',
+    name: 'Claude 3.5 Haiku',
+    provider: 'Anthropic',
+  },
+  { id: 'x-ai/grok-3-mini', name: 'Grok 3 Mini', provider: 'xAI' },
+]
 
 // ============================================================
 // COUNTDOWN HOOK
 // ============================================================
 
 function useNextHourCountdown() {
-  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextHour());
+  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextHour())
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimeLeft(getTimeToNextHour());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+      setTimeLeft(getTimeToNextHour())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
-  return timeLeft;
+  return timeLeft
 }
 
 function getTimeToNextHour(): { minutes: number; seconds: number } {
-  const now = new Date();
-  const nextHour = new Date(now);
-  nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
-  const diff = nextHour.getTime() - now.getTime();
+  const now = new Date()
+  const nextHour = new Date(now)
+  nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0)
+  const diff = nextHour.getTime() - now.getTime()
   return {
     minutes: Math.floor(diff / 60000),
     seconds: Math.floor((diff % 60000) / 1000),
-  };
+  }
 }
 
 // ============================================================
@@ -60,23 +72,23 @@ function getTimeToNextHour(): { minutes: number; seconds: number } {
 // ============================================================
 
 function ArenaModePage() {
-  const navigate = useNavigate();
-  const countdown = useNextHourCountdown();
+  const navigate = useNavigate()
+  const countdown = useNextHourCountdown()
 
   // Check for active games
   const { data: games } = useSuspenseQuery(
-    convexQuery(api.games.list, { limit: 10 })
-  );
+    convexQuery(api.games.list, { limit: 10 }),
+  )
 
-  const activeGame = games?.find((g) => g.status === "in_progress");
-  const recentGames = games?.filter((g) => g.status === "completed").slice(0, 5) ?? [];
+  const activeGame = games.find((g) => g.status === 'in_progress')
+  const recentGames = games.filter((g) => g.status === 'completed').slice(0, 5)
 
   // Auto-redirect to active game
   useEffect(() => {
     if (activeGame) {
-      navigate({ to: "/play/$gameId", params: { gameId: activeGame._id } });
+      navigate({ to: '/play/$gameId', params: { gameId: activeGame._id } })
     }
-  }, [activeGame, navigate]);
+  }, [activeGame, navigate])
 
   return (
     <div className="p-4 sm:p-8 max-w-4xl mx-auto">
@@ -106,7 +118,12 @@ function ArenaModePage() {
             </p>
             <Button
               variant="primary"
-              onClick={() => navigate({ to: "/play/$gameId", params: { gameId: activeGame._id } })}
+              onClick={() =>
+                navigate({
+                  to: '/play/$gameId',
+                  params: { gameId: activeGame._id },
+                })
+              }
             >
               Watch Live Game
             </Button>
@@ -120,8 +137,8 @@ function ArenaModePage() {
           <CardBody>
             <div className="text-center py-6">
               <div className="text-6xl font-bold text-green-400 mb-2 font-mono">
-                {String(countdown.minutes).padStart(2, "0")}:
-                {String(countdown.seconds).padStart(2, "0")}
+                {String(countdown.minutes).padStart(2, '0')}:
+                {String(countdown.seconds).padStart(2, '0')}
               </div>
               <p className="text-slate-400">until next scheduled game</p>
             </div>
@@ -139,7 +156,8 @@ function ArenaModePage() {
         </CardHeader>
         <CardBody>
           <p className="text-slate-400 mb-4">
-            All 5 budget-tier models compete in each game with randomized turn order:
+            All 5 budget-tier models compete in each game with randomized turn
+            order:
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {BUDGET_MODELS.map((model) => (
@@ -148,10 +166,10 @@ function ArenaModePage() {
                 className="bg-slate-700 rounded-lg p-3 flex items-center gap-3"
               >
                 <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center text-lg">
-                  {model.provider === "OpenAI" && "O"}
-                  {model.provider === "Google" && "G"}
-                  {model.provider === "Anthropic" && "A"}
-                  {model.provider === "xAI" && "X"}
+                  {model.provider === 'OpenAI' && 'O'}
+                  {model.provider === 'Google' && 'G'}
+                  {model.provider === 'Anthropic' && 'A'}
+                  {model.provider === 'xAI' && 'X'}
                 </div>
                 <div>
                   <div className="text-white font-medium text-sm">
@@ -234,5 +252,5 @@ function ArenaModePage() {
         </Card>
       )}
     </div>
-  );
+  )
 }

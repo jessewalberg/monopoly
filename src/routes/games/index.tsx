@@ -1,39 +1,42 @@
-import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "../../../convex/_generated/api";
-import { Button } from "../../components/ui/Button";
-import { Card, CardBody, CardHeader } from "../../components/ui/Card";
-import { Badge } from "../../components/ui/Badge";
+import { useState } from 'react'
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { convexQuery } from '@convex-dev/react-query'
+import { api } from '../../../convex/_generated/api'
+import { Button } from '../../components/ui/Button'
+import { Card, CardBody, CardHeader } from '../../components/ui/Card'
+import { Badge } from '../../components/ui/Badge'
 
 // ============================================================
 // ROUTE DEFINITION
 // ============================================================
 
-export const Route = createFileRoute("/games/")({
+export const Route = createFileRoute('/games/')({
   component: GamesHistoryPage,
-});
+})
 
 // ============================================================
 // GAMES HISTORY PAGE
 // ============================================================
 
 function GamesHistoryPage() {
-  const [filter, setFilter] = useState<"all" | "completed" | "in_progress" | "abandoned">("all");
+  const [filter, setFilter] = useState<
+    'all' | 'completed' | 'in_progress' | 'abandoned'
+  >('all')
 
   const { data: allGames } = useSuspenseQuery(
-    convexQuery(api.games.list, { limit: 100 })
-  );
+    convexQuery(api.games.list, { limit: 100 }),
+  )
 
   // Filter games
-  const filteredGames = filter === "all"
-    ? allGames
-    : allGames.filter((g) => g.status === filter);
+  const filteredGames =
+    filter === 'all' ? allGames : allGames.filter((g) => g.status === filter)
 
   // Stats
-  const completedCount = allGames.filter((g) => g.status === "completed").length;
-  const inProgressCount = allGames.filter((g) => g.status === "in_progress").length;
+  const completedCount = allGames.filter((g) => g.status === 'completed').length
+  const inProgressCount = allGames.filter(
+    (g) => g.status === 'in_progress',
+  ).length
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto">
@@ -56,20 +59,20 @@ function GamesHistoryPage() {
         <FilterButton
           label="All"
           count={allGames.length}
-          active={filter === "all"}
-          onClick={() => setFilter("all")}
+          active={filter === 'all'}
+          onClick={() => setFilter('all')}
         />
         <FilterButton
           label="Completed"
           count={completedCount}
-          active={filter === "completed"}
-          onClick={() => setFilter("completed")}
+          active={filter === 'completed'}
+          onClick={() => setFilter('completed')}
         />
         <FilterButton
           label="In Progress"
           count={inProgressCount}
-          active={filter === "in_progress"}
-          onClick={() => setFilter("in_progress")}
+          active={filter === 'in_progress'}
+          onClick={() => setFilter('in_progress')}
         />
       </div>
 
@@ -82,9 +85,7 @@ function GamesHistoryPage() {
         </CardHeader>
         <CardBody className="p-0">
           {filteredGames.length === 0 ? (
-            <div className="p-6 text-center text-slate-400">
-              No games found
-            </div>
+            <div className="p-6 text-center text-slate-400">No games found</div>
           ) : (
             <div className="divide-y divide-slate-700">
               {filteredGames.map((game) => (
@@ -105,7 +106,7 @@ function GamesHistoryPage() {
         </div>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -118,7 +119,7 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
       <div className="text-2xl font-bold text-white">{value}</div>
       <div className="text-sm text-slate-400">{label}</div>
     </div>
-  );
+  )
 }
 
 function FilterButton({
@@ -127,48 +128,52 @@ function FilterButton({
   active,
   onClick,
 }: {
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
+  label: string
+  count: number
+  active: boolean
+  onClick: () => void
 }) {
   return (
     <button
       onClick={onClick}
       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
         active
-          ? "bg-green-600 text-white"
-          : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+          ? 'bg-green-600 text-white'
+          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
       }`}
     >
       {label} ({count})
     </button>
-  );
+  )
 }
 
 interface GameData {
-  _id: string;
-  status: string;
-  currentTurnNumber: number;
-  createdAt: number;
-  startedAt?: number;
-  endedAt?: number;
-  winnerId?: string;
-  endingReason?: string;
+  _id: string
+  status: string
+  currentTurnNumber: number
+  createdAt: number
+  startedAt?: number
+  endedAt?: number
+  winnerId?: string
+  endingReason?: string
 }
 
 function GameRow({ game }: { game: GameData }) {
-  const statusVariant: Record<string, "success" | "info" | "warning" | "error" | "neutral"> = {
-    completed: "success",
-    in_progress: "info",
-    setup: "warning",
-    abandoned: "error",
-  };
+  const statusVariant: Record<
+    string,
+    'success' | 'info' | 'warning' | 'error' | 'neutral'
+  > = {
+    completed: 'success',
+    in_progress: 'info',
+    setup: 'warning',
+    abandoned: 'error',
+  }
 
-  const createdDate = new Date(game.createdAt);
-  const duration = game.endedAt && game.startedAt
-    ? formatDuration(game.endedAt - game.startedAt)
-    : null;
+  const createdDate = new Date(game.createdAt)
+  const duration =
+    game.endedAt && game.startedAt
+      ? formatDuration(game.endedAt - game.startedAt)
+      : null
 
   const content = (
     <>
@@ -181,7 +186,11 @@ function GameRow({ game }: { game: GameData }) {
             Game #{game._id.slice(-6)}
           </div>
           <div className="text-sm text-slate-400">
-            {createdDate.toLocaleDateString()} at {createdDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {createdDate.toLocaleDateString()} at{' '}
+            {createdDate.toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
           </div>
         </div>
       </div>
@@ -191,15 +200,15 @@ function GameRow({ game }: { game: GameData }) {
           <div className="text-white">{game.currentTurnNumber} turns</div>
           {duration && <div className="text-sm text-slate-400">{duration}</div>}
         </div>
-        <Badge variant={statusVariant[game.status] || "neutral"} size="sm">
-          {game.status.replace("_", " ")}
+        <Badge variant={statusVariant[game.status]} size="sm">
+          {game.status.replace('_', ' ')}
         </Badge>
         <span className="text-slate-400">→</span>
       </div>
     </>
-  );
+  )
 
-  if (game.status === "in_progress") {
+  if (game.status === 'in_progress') {
     return (
       <Link
         to="/play/$gameId"
@@ -208,7 +217,7 @@ function GameRow({ game }: { game: GameData }) {
       >
         {content}
       </Link>
-    );
+    )
   }
 
   return (
@@ -219,30 +228,32 @@ function GameRow({ game }: { game: GameData }) {
     >
       {content}
     </Link>
-  );
+  )
 }
 
 // ============================================================
 // HELPERS
 // ============================================================
 
-function getAvgTurns(games: GameData[]): string {
-  const completed = games.filter((g) => g.status === "completed");
-  if (completed.length === 0) return "0";
-  const avg = completed.reduce((sum, g) => sum + g.currentTurnNumber, 0) / completed.length;
-  return Math.round(avg).toString();
+function getAvgTurns(games: Array<GameData>): string {
+  const completed = games.filter((g) => g.status === 'completed')
+  if (completed.length === 0) return '0'
+  const avg =
+    completed.reduce((sum, g) => sum + g.currentTurnNumber, 0) /
+    completed.length
+  return Math.round(avg).toString()
 }
 
 function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
+  const seconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
 
   if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`;
+    return `${hours}h ${minutes % 60}m`
   }
   if (minutes > 0) {
-    return `${minutes}m ${seconds % 60}s`;
+    return `${minutes}m ${seconds % 60}s`
   }
-  return `${seconds}s`;
+  return `${seconds}s`
 }

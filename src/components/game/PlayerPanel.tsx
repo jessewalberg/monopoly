@@ -1,39 +1,39 @@
-import { Card, CardHeader, CardBody } from "../ui/Card";
-import { Badge } from "../ui/Badge";
-import { PlayerToken } from "./PlayerToken";
-import { GROUP_COLORS } from "./Board";
-import type { Id } from "../../../convex/_generated/dataModel";
-import type { PropertyGroup } from "../../../convex/lib/constants";
+import { Card, CardBody, CardHeader } from '../ui/Card'
+import { Badge } from '../ui/Badge'
+import { PlayerToken } from './PlayerToken'
+import { GROUP_COLORS } from './Board'
+import type { Id } from '../../../convex/_generated/dataModel'
+import type { PropertyGroup } from '../../../convex/lib/constants'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface PlayerProperty {
-  _id: Id<"properties">;
-  name: string;
-  group: string;
-  houses: number;
-  isMortgaged: boolean;
+  _id: Id<'properties'>
+  name: string
+  group: string
+  houses: number
+  isMortgaged: boolean
 }
 
 export interface PlayerPanelProps {
   player: {
-    _id: Id<"players">;
-    modelId: string;
-    modelDisplayName: string;
-    tokenColor: string;
-    textColor: string;
-    cash: number;
-    position: number;
-    inJail: boolean;
-    isBankrupt: boolean;
-    getOutOfJailCards: number;
-    jailTurnsRemaining?: number;
-  };
-  properties: PlayerProperty[];
-  isCurrentTurn: boolean;
-  compact?: boolean;
+    _id: Id<'players'>
+    modelId: string
+    modelDisplayName: string
+    tokenColor: string
+    textColor: string
+    cash: number
+    position: number
+    inJail: boolean
+    isBankrupt: boolean
+    getOutOfJailCards: number
+    jailTurnsRemaining?: number
+  }
+  properties: Array<PlayerProperty>
+  isCurrentTurn: boolean
+  compact?: boolean
 }
 
 // ============================================================
@@ -47,11 +47,11 @@ export function PlayerPanel({
   compact = false,
 }: PlayerPanelProps) {
   // Group properties by color group
-  const propertiesByGroup = groupPropertiesByGroup(properties);
+  const propertiesByGroup = groupPropertiesByGroup(properties)
 
   if (player.isBankrupt) {
     return (
-      <Card className={`relative ${compact ? "" : "w-64"}`}>
+      <Card className={`relative ${compact ? '' : 'w-64'}`}>
         <CardHeader className="py-2">
           <div className="flex items-center gap-2">
             <PlayerToken player={player} size="sm" />
@@ -66,14 +66,14 @@ export function PlayerPanel({
           <span className="text-2xl font-bold text-red-500">BANKRUPT</span>
         </div>
       </Card>
-    );
+    )
   }
 
   return (
     <Card
       className={`
-        ${compact ? "" : "w-64"}
-        ${isCurrentTurn ? "ring-2 ring-yellow-400 ring-offset-2 ring-offset-slate-900" : ""}
+        ${compact ? '' : 'w-64'}
+        ${isCurrentTurn ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-slate-900' : ''}
         transition-all duration-200
       `}
     >
@@ -88,7 +88,9 @@ export function PlayerPanel({
             <p className="text-sm font-medium text-white truncate">
               {player.modelDisplayName}
             </p>
-            <p className="text-xs text-slate-400 truncate">{player.modelId.split("/").pop()}</p>
+            <p className="text-xs text-slate-400 truncate">
+              {player.modelId.split('/').pop()}
+            </p>
           </div>
           {isCurrentTurn && (
             <Badge variant="success" size="sm">
@@ -111,7 +113,9 @@ export function PlayerPanel({
         <div className="flex flex-wrap gap-1">
           {player.inJail && (
             <Badge variant="warning" size="sm">
-              In Jail {player.jailTurnsRemaining !== undefined && `(${player.jailTurnsRemaining})`}
+              In Jail{' '}
+              {player.jailTurnsRemaining !== undefined &&
+                `(${player.jailTurnsRemaining})`}
             </Badge>
           )}
           {player.getOutOfJailCards > 0 && (
@@ -131,8 +135,8 @@ export function PlayerPanel({
               {Object.entries(propertiesByGroup).map(([group, groupProps]) => (
                 <PropertyGroupIndicator
                   key={group}
-                  group={group as PropertyGroup | "railroad" | "utility"}
-                  properties={groupProps}
+                  group={group as PropertyGroup | 'railroad' | 'utility'}
+                  properties={groupProps ?? []}
                 />
               ))}
             </div>
@@ -150,7 +154,7 @@ export function PlayerPanel({
         )}
       </CardBody>
     </Card>
-  );
+  )
 }
 
 // ============================================================
@@ -161,26 +165,27 @@ function PropertyGroupIndicator({
   group,
   properties,
 }: {
-  group: PropertyGroup | "railroad" | "utility";
-  properties: PlayerProperty[];
+  group: PropertyGroup | 'railroad' | 'utility'
+  properties: Array<PlayerProperty>
 }) {
-  const color = GROUP_COLORS[group] || "#666666";
-  const totalHouses = properties.reduce((sum, p) => sum + p.houses, 0);
-  const hasMortgaged = properties.some((p) => p.isMortgaged);
+  const color = GROUP_COLORS[group] || '#666666'
+  const totalHouses = properties.reduce((sum, p) => sum + p.houses, 0)
+  const hasMortgaged = properties.some((p) => p.isMortgaged)
 
   return (
     <div
       className={`
         flex items-center gap-0.5 px-1.5 py-0.5 rounded
-        ${hasMortgaged ? "opacity-50" : ""}
+        ${hasMortgaged ? 'opacity-50' : ''}
       `}
-      style={{ backgroundColor: `${color}30`, borderColor: color, borderWidth: 1 }}
-      title={properties.map((p) => p.name).join(", ")}
+      style={{
+        backgroundColor: `${color}30`,
+        borderColor: color,
+        borderWidth: 1,
+      }}
+      title={properties.map((p) => p.name).join(', ')}
     >
-      <div
-        className="w-2 h-2 rounded-sm"
-        style={{ backgroundColor: color }}
-      />
+      <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: color }} />
       <span className="text-[10px] text-white font-medium">
         {properties.length}
       </span>
@@ -188,7 +193,7 @@ function PropertyGroupIndicator({
         <span className="text-[10px] text-green-400">+{totalHouses}</span>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -196,18 +201,16 @@ function PropertyGroupIndicator({
 // ============================================================
 
 function groupPropertiesByGroup(
-  properties: PlayerProperty[]
-): Record<string, PlayerProperty[]> {
-  const grouped: Record<string, PlayerProperty[]> = {};
+  properties: Array<PlayerProperty>,
+): Record<string, Array<PlayerProperty> | undefined> {
+  const grouped: Record<string, Array<PlayerProperty> | undefined> = {}
 
   for (const prop of properties) {
-    if (!grouped[prop.group]) {
-      grouped[prop.group] = [];
-    }
-    grouped[prop.group].push(prop);
+    const group = (grouped[prop.group] ??= [])
+    group.push(prop)
   }
 
-  return grouped;
+  return grouped
 }
 
 // ============================================================
@@ -219,16 +222,14 @@ export function PlayerPanelsList({
   properties,
   currentPlayerId,
 }: {
-  players: PlayerPanelProps["player"][];
-  properties: Array<PlayerProperty & { ownerId?: Id<"players"> }>;
-  currentPlayerId?: Id<"players">;
+  players: Array<PlayerPanelProps['player']>
+  properties: Array<PlayerProperty & { ownerId?: Id<'players'> }>
+  currentPlayerId?: Id<'players'>
 }) {
   return (
     <div className="flex flex-col gap-3">
       {players.map((player) => {
-        const playerProps = properties.filter(
-          (p) => p.ownerId === player._id
-        );
+        const playerProps = properties.filter((p) => p.ownerId === player._id)
         return (
           <PlayerPanel
             key={player._id}
@@ -236,8 +237,8 @@ export function PlayerPanelsList({
             properties={playerProps}
             isCurrentTurn={player._id === currentPlayerId}
           />
-        );
+        )
       })}
     </div>
-  );
+  )
 }

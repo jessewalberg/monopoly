@@ -1,23 +1,23 @@
-import { Button } from "../ui/Button";
-import { Badge } from "../ui/Badge";
-import { Card, CardBody } from "../ui/Card";
+import { Button } from '../ui/Button'
+import { Badge } from '../ui/Badge'
+import { Card, CardBody } from '../ui/Card'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface GameControlsProps {
-  isPlaying: boolean;
-  isPaused: boolean;
-  speedMs: number;
-  currentTurnNumber: number;
-  currentPlayerName?: string;
-  currentPlayerColor?: string;
-  currentPhase?: string;
-  onPlay: () => void;
-  onPause: () => void;
-  onSpeedChange: (speedMs: number) => void;
-  onAbandon?: () => void;
+  isPlaying: boolean
+  isPaused: boolean
+  speedMs: number
+  currentTurnNumber: number
+  currentPlayerName?: string
+  currentPlayerColor?: string
+  currentPhase?: string
+  onPlay: () => void
+  onPause: () => void
+  onSpeedChange: (speedMs: number) => void
+  onAbandon?: () => void
 }
 
 // ============================================================
@@ -25,11 +25,11 @@ export interface GameControlsProps {
 // ============================================================
 
 const SPEED_OPTIONS = [
-  { label: "0.5x", value: 4000, description: "Slow" },
-  { label: "1x", value: 2000, description: "Normal" },
-  { label: "2x", value: 1000, description: "Fast" },
-  { label: "4x", value: 500, description: "Very Fast" },
-];
+  { label: '0.5x', value: 4000, description: 'Slow' },
+  { label: '1x', value: 2000, description: 'Normal' },
+  { label: '2x', value: 1000, description: 'Fast' },
+  { label: '4x', value: 500, description: 'Very Fast' },
+]
 
 // ============================================================
 // ICONS
@@ -40,7 +40,7 @@ function PlayIcon() {
     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
       <path d="M8 5v14l11-7z" />
     </svg>
-  );
+  )
 }
 
 function PauseIcon() {
@@ -48,7 +48,7 @@ function PauseIcon() {
     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
       <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
     </svg>
-  );
+  )
 }
 
 function StopIcon() {
@@ -56,7 +56,7 @@ function StopIcon() {
     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
       <path d="M6 6h12v12H6z" />
     </svg>
-  );
+  )
 }
 
 // ============================================================
@@ -76,7 +76,7 @@ export function GameControls({
   onSpeedChange,
   onAbandon,
 }: GameControlsProps) {
-  const currentSpeedOption = SPEED_OPTIONS.find((opt) => opt.value === speedMs);
+  const currentSpeedOption = SPEED_OPTIONS.find((opt) => opt.value === speedMs)
 
   return (
     <Card>
@@ -93,15 +93,15 @@ export function GameControls({
             {currentPhase && (
               <Badge
                 variant={
-                  currentPhase === "rolling"
-                    ? "info"
-                    : currentPhase === "game_over"
-                      ? "error"
-                      : "neutral"
+                  currentPhase === 'rolling'
+                    ? 'info'
+                    : currentPhase === 'game_over'
+                      ? 'error'
+                      : 'neutral'
                 }
                 size="sm"
               >
-                {currentPhase.replace("_", " ")}
+                {currentPhase.replace('_', ' ')}
               </Badge>
             )}
           </div>
@@ -111,7 +111,7 @@ export function GameControls({
             <div className="flex items-center gap-2">
               <div
                 className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: currentPlayerColor || "#666" }}
+                style={{ backgroundColor: currentPlayerColor || '#666' }}
               />
               <span className="text-sm text-white">{currentPlayerName}</span>
               <span className="text-xs text-slate-500">is playing</span>
@@ -136,7 +136,7 @@ export function GameControls({
                 onClick={onPlay}
                 leftIcon={<PlayIcon />}
               >
-                {isPaused ? "Resume" : "Start"}
+                {isPaused ? 'Resume' : 'Start'}
               </Button>
             )}
 
@@ -169,8 +169,8 @@ export function GameControls({
                     flex-1 py-1.5 text-xs font-medium rounded transition-colors
                     ${
                       speedMs === option.value
-                        ? "bg-green-600 text-white"
-                        : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                        ? 'bg-green-600 text-white'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                     }
                   `}
                 >
@@ -182,7 +182,7 @@ export function GameControls({
         </div>
       </CardBody>
     </Card>
-  );
+  )
 }
 
 // ============================================================
@@ -195,10 +195,10 @@ export function GameControlsCompact({
   onPlay,
   onPause,
 }: {
-  isPlaying: boolean;
-  isPaused: boolean;
-  onPlay: () => void;
-  onPause: () => void;
+  isPlaying: boolean
+  isPaused: boolean
+  onPlay: () => void
+  onPause: () => void
 }) {
   return (
     <div className="inline-flex items-center gap-1">
@@ -214,11 +214,11 @@ export function GameControlsCompact({
         <button
           onClick={onPlay}
           className="p-2 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors"
-          title={isPaused ? "Resume" : "Play"}
+          title={isPaused ? 'Resume' : 'Play'}
         >
           <PlayIcon />
         </button>
       )}
     </div>
-  );
+  )
 }

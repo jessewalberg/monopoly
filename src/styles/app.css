@@ -29,7 +29,8 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 5px rgba(34, 197, 94, 0.3);
   }
   50% {
@@ -38,7 +39,8 @@
 }
 
 @keyframes bounce-subtle {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -176,7 +178,9 @@
 }
 
 .transition-property {
-  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  transition:
+    transform 0.15s ease-out,
+    box-shadow 0.15s ease-out;
 }
 
 /* ============================================================
@@ -196,7 +200,9 @@
 }
 
 .property-card {
-  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  transition:
+    transform 0.15s ease-out,
+    box-shadow 0.15s ease-out;
 }
 
 .property-card:hover {
@@ -278,16 +284,36 @@
    ============================================================ */
 
 /* Monopoly board property colors */
-.property-brown { background-color: #8B4513; }
-.property-light-blue { background-color: #87CEEB; }
-.property-pink { background-color: #FF69B4; }
-.property-orange { background-color: #FFA500; }
-.property-red { background-color: #FF0000; }
-.property-yellow { background-color: #FFD700; }
-.property-green { background-color: #228B22; }
-.property-dark-blue { background-color: #00008B; }
-.property-railroad { background-color: #000000; }
-.property-utility { background-color: #808080; }
+.property-brown {
+  background-color: #8b4513;
+}
+.property-light-blue {
+  background-color: #87ceeb;
+}
+.property-pink {
+  background-color: #ff69b4;
+}
+.property-orange {
+  background-color: #ffa500;
+}
+.property-red {
+  background-color: #ff0000;
+}
+.property-yellow {
+  background-color: #ffd700;
+}
+.property-green {
+  background-color: #228b22;
+}
+.property-dark-blue {
+  background-color: #00008b;
+}
+.property-railroad {
+  background-color: #000000;
+}
+.property-utility {
+  background-color: #808080;
+}
 
 /* Current player indicator */
 .current-player {

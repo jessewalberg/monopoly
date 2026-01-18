@@ -1,33 +1,38 @@
-import { Select, type SelectOptionGroup } from "../ui/Select";
-import { Badge } from "../ui/Badge";
+import { Select  } from '../ui/Select'
+import { Badge } from '../ui/Badge'
 import {
   AVAILABLE_MODELS,
-  getProviders,
-  type LLMModel,
-  type ModelTier,
-} from "../../lib/models";
+  
+  
+  getProviders
+} from '../../lib/models'
+import type {LLMModel, ModelTier} from '../../lib/models';
+import type {SelectOptionGroup} from '../ui/Select';
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface ModelSelectorProps {
-  value?: string;
-  onChange: (modelId: string) => void;
-  disabled?: boolean;
-  label?: string;
-  excludeModels?: string[]; // IDs of models to exclude (already selected)
+  value?: string
+  onChange: (modelId: string) => void
+  disabled?: boolean
+  label?: string
+  excludeModels?: Array<string> // IDs of models to exclude (already selected)
 }
 
 // ============================================================
 // TIER BADGE STYLES
 // ============================================================
 
-const tierBadgeVariant: Record<ModelTier, "success" | "info" | "warning" | "neutral"> = {
-  budget: "success",    // Green - cheapest, recommended
-  standard: "info",     // Blue - balanced
-  premium: "warning",   // Yellow - expensive
-};
+const tierBadgeVariant: Record<
+  ModelTier,
+  'success' | 'info' | 'warning' | 'neutral'
+> = {
+  budget: 'success', // Green - cheapest, recommended
+  standard: 'info', // Blue - balanced
+  premium: 'warning', // Yellow - expensive
+}
 
 // ============================================================
 // MODEL SELECTOR COMPONENT
@@ -37,34 +42,34 @@ export function ModelSelector({
   value,
   onChange,
   disabled = false,
-  label = "Select Model",
+  label = 'Select Model',
   excludeModels = [],
 }: ModelSelectorProps) {
   // Group models by provider
-  const providers = getProviders();
-  const optionGroups: SelectOptionGroup[] = providers.map((provider) => ({
+  const providers = getProviders()
+  const optionGroups: Array<SelectOptionGroup> = providers.map((provider) => ({
     label: provider,
     options: AVAILABLE_MODELS.filter(
-      (m) => m.provider === provider && !excludeModels.includes(m.id)
+      (m) => m.provider === provider && !excludeModels.includes(m.id),
     ).map((m) => ({
       value: m.id,
       label: `${m.name} (${m.tier})`,
     })),
-  }));
+  }))
 
   // Filter out empty groups
-  const nonEmptyGroups = optionGroups.filter((g) => g.options.length > 0);
+  const nonEmptyGroups = optionGroups.filter((g) => g.options.length > 0)
 
   return (
     <Select
       label={label}
-      value={value || ""}
+      value={value || ''}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       placeholder="Choose a model..."
       optionGroups={nonEmptyGroups}
     />
-  );
+  )
 }
 
 // ============================================================
@@ -86,11 +91,12 @@ export function ModelInfoCard({ model }: { model: LLMModel }) {
       )}
       {model.costPerMillion && (
         <p className="text-xs text-slate-500">
-          ~${model.costPerMillion.input}/${model.costPerMillion.output} per 1M tokens (in/out)
+          ~${model.costPerMillion.input}/${model.costPerMillion.output} per 1M
+          tokens (in/out)
         </p>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -101,10 +107,10 @@ export function ModelSelectorWithPreview({
   value,
   onChange,
   disabled = false,
-  label = "Select Model",
+  label = 'Select Model',
   excludeModels = [],
 }: ModelSelectorProps) {
-  const selectedModel = AVAILABLE_MODELS.find((m) => m.id === value);
+  const selectedModel = AVAILABLE_MODELS.find((m) => m.id === value)
 
   return (
     <div className="space-y-2">
@@ -117,7 +123,7 @@ export function ModelSelectorWithPreview({
       />
       {selectedModel && <ModelInfoCard model={selectedModel} />}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -130,34 +136,34 @@ export function ModelGridSelector({
   onChange,
   excludeModels = [],
 }: {
-  value?: string;
-  onChange: (modelId: string) => void;
-  excludeModels?: string[];
+  value?: string
+  onChange: (modelId: string) => void
+  excludeModels?: Array<string>
 }) {
   const availableModels = AVAILABLE_MODELS.filter(
-    (m) => !excludeModels.includes(m.id)
-  );
+    (m) => !excludeModels.includes(m.id),
+  )
 
   // Group by tier
-  const byTier: Record<ModelTier, LLMModel[]> = {
+  const byTier: Record<ModelTier, Array<LLMModel>> = {
     budget: [],
     standard: [],
     premium: [],
-  };
+  }
 
   for (const model of availableModels) {
-    byTier[model.tier].push(model);
+    byTier[model.tier].push(model)
   }
 
   const tierLabels: Record<ModelTier, string> = {
-    budget: "Budget (Recommended)",
-    standard: "Standard",
-    premium: "Premium",
-  };
+    budget: 'Budget (Recommended)',
+    standard: 'Standard',
+    premium: 'Premium',
+  }
 
   return (
     <div className="space-y-4">
-      {(["budget", "standard", "premium"] as ModelTier[]).map(
+      {(['budget', 'standard', 'premium'] as Array<ModelTier>).map(
         (tier) =>
           byTier[tier].length > 0 && (
             <div key={tier}>
@@ -173,8 +179,8 @@ export function ModelGridSelector({
                       p-3 rounded-lg text-left transition-all
                       ${
                         value === model.id
-                          ? "bg-green-600/20 border-2 border-green-500"
-                          : "bg-slate-700 border-2 border-transparent hover:border-slate-500"
+                          ? 'bg-green-600/20 border-2 border-green-500'
+                          : 'bg-slate-700 border-2 border-transparent hover:border-slate-500'
                       }
                     `}
                   >
@@ -186,8 +192,8 @@ export function ModelGridSelector({
                 ))}
               </div>
             </div>
-          )
+          ),
       )}
     </div>
-  );
+  )
 }

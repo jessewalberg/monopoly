@@ -1,48 +1,48 @@
-import { Modal } from "../ui/Modal";
-import { Card, CardBody } from "../ui/Card";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
-import { GROUP_COLORS } from "./Board";
-import type { Id } from "../../../convex/_generated/dataModel";
-import type { PropertyGroup } from "../../../convex/lib/constants";
+import { Modal } from '../ui/Modal'
+import { Card, CardBody } from '../ui/Card'
+import { Badge } from '../ui/Badge'
+import { Button } from '../ui/Button'
+import { GROUP_COLORS } from './Board'
+import type { Id } from '../../../convex/_generated/dataModel'
+import type { PropertyGroup } from '../../../convex/lib/constants'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface TradeProperty {
-  _id: Id<"properties">;
-  name: string;
-  group: string;
-  houses: number;
-  isMortgaged: boolean;
+  _id: Id<'properties'>
+  name: string
+  group: string
+  houses: number
+  isMortgaged: boolean
 }
 
 export interface TradeOffer {
-  money: number;
-  properties: TradeProperty[];
-  jailCards: number;
+  money: number
+  properties: Array<TradeProperty>
+  jailCards: number
 }
 
 export interface TradeParty {
-  playerId: Id<"players">;
-  playerName: string;
-  playerColor: string;
-  cash: number;
-  properties: TradeProperty[];
-  jailCards: number;
+  playerId: Id<'players'>
+  playerName: string
+  playerColor: string
+  cash: number
+  properties: Array<TradeProperty>
+  jailCards: number
 }
 
 export interface TradeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  proposer: TradeParty;
-  responder: TradeParty;
-  offering: TradeOffer;
-  requesting: TradeOffer;
-  proposerReasoning?: string;
-  responderReasoning?: string;
-  status?: "pending" | "accepted" | "rejected" | "countered";
+  isOpen: boolean
+  onClose: () => void
+  proposer: TradeParty
+  responder: TradeParty
+  offering: TradeOffer
+  requesting: TradeOffer
+  proposerReasoning?: string
+  responderReasoning?: string
+  status?: 'pending' | 'accepted' | 'rejected' | 'countered'
 }
 
 // ============================================================
@@ -58,7 +58,7 @@ export function TradeModal({
   requesting,
   proposerReasoning,
   responderReasoning,
-  status = "pending",
+  status = 'pending',
 }: TradeModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Trade Proposal" size="lg">
@@ -67,13 +67,13 @@ export function TradeModal({
         <div className="flex justify-center">
           <Badge
             variant={
-              status === "accepted"
-                ? "success"
-                : status === "rejected"
-                  ? "error"
-                  : status === "countered"
-                    ? "warning"
-                    : "info"
+              status === 'accepted'
+                ? 'success'
+                : status === 'rejected'
+                  ? 'error'
+                  : status === 'countered'
+                    ? 'warning'
+                    : 'info'
             }
             size="md"
           >
@@ -102,7 +102,7 @@ export function TradeModal({
         </div>
 
         {/* Action buttons (if pending) */}
-        {status === "pending" && (
+        {status === 'pending' && (
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-700">
             <Button variant="danger" onClick={onClose}>
               Reject
@@ -117,7 +117,7 @@ export function TradeModal({
         )}
       </div>
     </Modal>
-  );
+  )
 }
 
 // ============================================================
@@ -131,19 +131,21 @@ function TradeColumn({
   reasoning,
   isRequest = false,
 }: {
-  title: string;
-  playerColor: string;
-  offer: TradeOffer;
-  reasoning?: string;
-  isRequest?: boolean;
+  title: string
+  playerColor: string
+  offer: TradeOffer
+  reasoning?: string
+  isRequest?: boolean
 }) {
   const isEmpty =
-    offer.money === 0 &&
-    offer.properties.length === 0 &&
-    offer.jailCards === 0;
+    offer.money === 0 && offer.properties.length === 0 && offer.jailCards === 0
 
   return (
-    <Card className={isRequest ? "border border-red-500/30" : "border border-green-500/30"}>
+    <Card
+      className={
+        isRequest ? 'border border-red-500/30' : 'border border-green-500/30'
+      }
+    >
       <CardBody className="py-3 space-y-3">
         <div className="flex items-center gap-2">
           <div
@@ -197,7 +199,7 @@ function TradeColumn({
         )}
       </CardBody>
     </Card>
-  );
+  )
 }
 
 // ============================================================
@@ -205,14 +207,14 @@ function TradeColumn({
 // ============================================================
 
 function TradePropertyCard({ property }: { property: TradeProperty }) {
-  const color = GROUP_COLORS[property.group as PropertyGroup] || "#666666";
+  const color = GROUP_COLORS[property.group as PropertyGroup] || '#666666'
 
   return (
     <div
       className={`
         flex items-center gap-2 px-2 py-1.5 rounded
         bg-slate-700/50 border-l-4
-        ${property.isMortgaged ? "opacity-50" : ""}
+        ${property.isMortgaged ? 'opacity-50' : ''}
       `}
       style={{ borderLeftColor: color }}
     >
@@ -220,7 +222,7 @@ function TradePropertyCard({ property }: { property: TradeProperty }) {
         <p className="text-sm text-white truncate">{property.name}</p>
         {property.houses > 0 && (
           <p className="text-xs text-green-400">
-            {property.houses === 5 ? "Hotel" : `${property.houses} house(s)`}
+            {property.houses === 5 ? 'Hotel' : `${property.houses} house(s)`}
           </p>
         )}
       </div>
@@ -230,7 +232,7 @@ function TradePropertyCard({ property }: { property: TradeProperty }) {
         </Badge>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -242,11 +244,11 @@ export function TradeSummaryInline({
   responderName,
   status,
 }: {
-  proposerName: string;
-  responderName: string;
-  offering?: TradeOffer;
-  requesting?: TradeOffer;
-  status: "pending" | "accepted" | "rejected" | "countered";
+  proposerName: string
+  responderName: string
+  offering?: TradeOffer
+  requesting?: TradeOffer
+  status: 'pending' | 'accepted' | 'rejected' | 'countered'
 }) {
   return (
     <div className="inline-flex items-center gap-2 px-2 py-1 bg-slate-700/50 rounded-lg text-sm">
@@ -255,16 +257,16 @@ export function TradeSummaryInline({
       <span className="text-slate-400">{responderName}</span>
       <Badge
         variant={
-          status === "accepted"
-            ? "success"
-            : status === "rejected"
-              ? "error"
-              : "info"
+          status === 'accepted'
+            ? 'success'
+            : status === 'rejected'
+              ? 'error'
+              : 'info'
         }
         size="sm"
       >
         {status}
       </Badge>
     </div>
-  );
+  )
 }

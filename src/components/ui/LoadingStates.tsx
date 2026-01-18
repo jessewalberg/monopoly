@@ -3,45 +3,45 @@
 // ============================================================
 
 interface SkeletonProps {
-  className?: string;
-  variant?: "text" | "circular" | "rectangular" | "rounded";
-  width?: string | number;
-  height?: string | number;
-  animation?: "pulse" | "wave" | "none";
+  className?: string
+  variant?: 'text' | 'circular' | 'rectangular' | 'rounded'
+  width?: string | number
+  height?: string | number
+  animation?: 'pulse' | 'wave' | 'none'
 }
 
 export function Skeleton({
-  className = "",
-  variant = "rectangular",
+  className = '',
+  variant = 'rectangular',
   width,
   height,
-  animation = "pulse",
+  animation = 'pulse',
 }: SkeletonProps) {
-  const baseClasses = "bg-slate-700";
+  const baseClasses = 'bg-slate-700'
 
   const variantClasses = {
-    text: "rounded",
-    circular: "rounded-full",
-    rectangular: "",
-    rounded: "rounded-lg",
-  };
+    text: 'rounded',
+    circular: 'rounded-full',
+    rectangular: '',
+    rounded: 'rounded-lg',
+  }
 
   const animationClasses = {
-    pulse: "animate-pulse",
-    wave: "animate-shimmer",
-    none: "",
-  };
+    pulse: 'animate-pulse',
+    wave: 'animate-shimmer',
+    none: '',
+  }
 
-  const style: React.CSSProperties = {};
-  if (width) style.width = typeof width === "number" ? `${width}px` : width;
-  if (height) style.height = typeof height === "number" ? `${height}px` : height;
+  const style: React.CSSProperties = {}
+  if (width) style.width = typeof width === 'number' ? `${width}px` : width
+  if (height) style.height = typeof height === 'number' ? `${height}px` : height
 
   return (
     <div
       className={`${baseClasses} ${variantClasses[variant]} ${animationClasses[animation]} ${className}`}
       style={style}
     />
-  );
+  )
 }
 
 // ============================================================
@@ -49,23 +49,23 @@ export function Skeleton({
 // ============================================================
 
 interface SpinnerProps {
-  size?: "sm" | "md" | "lg" | "xl";
-  className?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl'
+  className?: string
 }
 
-export function Spinner({ size = "md", className = "" }: SpinnerProps) {
+export function Spinner({ size = 'md', className = '' }: SpinnerProps) {
   const sizeClasses = {
-    sm: "w-4 h-4 border-2",
-    md: "w-8 h-8 border-3",
-    lg: "w-12 h-12 border-4",
-    xl: "w-16 h-16 border-4",
-  };
+    sm: 'w-4 h-4 border-2',
+    md: 'w-8 h-8 border-3',
+    lg: 'w-12 h-12 border-4',
+    xl: 'w-16 h-16 border-4',
+  }
 
   return (
     <div
       className={`${sizeClasses[size]} border-slate-600 border-t-green-500 rounded-full animate-spin ${className}`}
     />
-  );
+  )
 }
 
 // ============================================================
@@ -73,16 +73,16 @@ export function Spinner({ size = "md", className = "" }: SpinnerProps) {
 // ============================================================
 
 interface PageLoaderProps {
-  message?: string;
+  message?: string
 }
 
-export function PageLoader({ message = "Loading..." }: PageLoaderProps) {
+export function PageLoader({ message = 'Loading...' }: PageLoaderProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
       <Spinner size="lg" />
       <p className="text-slate-400">{message}</p>
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -117,7 +117,12 @@ export function GameBoardSkeleton() {
                 <Skeleton variant="circular" width={40} height={40} />
                 <div className="flex-1">
                   <Skeleton variant="text" width="60%" height={20} />
-                  <Skeleton variant="text" width="40%" height={16} className="mt-1" />
+                  <Skeleton
+                    variant="text"
+                    width="40%"
+                    height={16}
+                    className="mt-1"
+                  />
                 </div>
               </div>
             </div>
@@ -128,7 +133,7 @@ export function GameBoardSkeleton() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -159,7 +164,7 @@ export function LeaderboardSkeleton({ rows = 10 }: { rows?: number }) {
         </div>
       ))}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -178,7 +183,7 @@ export function AnalyticsCardSkeleton() {
       </div>
       <Skeleton variant="rounded" height={100} />
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -208,7 +213,7 @@ export function ChartSkeleton({ height = 300 }: { height?: number }) {
         ))}
       </div>
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -219,8 +224,8 @@ export function TableSkeleton({
   rows = 5,
   columns = 4,
 }: {
-  rows?: number;
-  columns?: number;
+  rows?: number
+  columns?: number
 }) {
   return (
     <div className="overflow-hidden">
@@ -237,15 +242,15 @@ export function TableSkeleton({
       </div>
 
       {/* Rows */}
-      {Array.from({ length: rows }, (_, rowIndex) => (
-        <div
-          key={rowIndex}
-          className="flex gap-4 p-3 border-b border-slate-700/50"
-        >
-          {Array.from({ length: columns }, (_, colIndex) => (
-            <Skeleton
-              key={colIndex}
-              variant="text"
+        {Array.from({ length: rows }, (_row, rowIndex) => (
+          <div
+            key={rowIndex}
+            className="flex gap-4 p-3 border-b border-slate-700/50"
+          >
+            {Array.from({ length: columns }, (_col, colIndex) => (
+              <Skeleton
+                key={colIndex}
+                variant="text"
               width={`${100 / columns}%`}
               height={16}
             />
@@ -253,7 +258,7 @@ export function TableSkeleton({
         </div>
       ))}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -261,15 +266,15 @@ export function TableSkeleton({
 // ============================================================
 
 interface EmptyStateProps {
-  icon?: string;
-  title: string;
-  description?: string;
-  actionLabel?: string;
-  onAction?: () => void;
+  icon?: string
+  title: string
+  description?: string
+  actionLabel?: string
+  onAction?: () => void
 }
 
 export function EmptyState({
-  icon = "📭",
+  icon = '📭',
   title,
   description,
   actionLabel,
@@ -278,7 +283,9 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center min-h-[200px] p-8 text-center">
       <div className="text-5xl mb-4">
-        <span role="img" aria-label="Empty">{icon}</span>
+        <span role="img" aria-label="Empty">
+          {icon}
+        </span>
       </div>
       <h3 className="text-lg font-medium text-white mb-2">{title}</h3>
       {description && (
@@ -293,7 +300,7 @@ export function EmptyState({
         </button>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -301,20 +308,20 @@ export function EmptyState({
 // ============================================================
 
 interface InlineLoadingProps {
-  message?: string;
-  size?: "sm" | "md";
+  message?: string
+  size?: 'sm' | 'md'
 }
 
 export function InlineLoading({
-  message = "Loading...",
-  size = "md",
+  message = 'Loading...',
+  size = 'md',
 }: InlineLoadingProps) {
   return (
     <div className="flex items-center gap-2 text-slate-400">
-      <Spinner size={size === "sm" ? "sm" : "md"} />
-      <span className={size === "sm" ? "text-sm" : ""}>{message}</span>
+      <Spinner size={size === 'sm' ? 'sm' : 'md'} />
+      <span className={size === 'sm' ? 'text-sm' : ''}>{message}</span>
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -322,12 +329,12 @@ export function InlineLoading({
 // ============================================================
 
 interface LoadingButtonProps {
-  loading?: boolean;
-  disabled?: boolean;
-  children: React.ReactNode;
-  onClick?: () => void;
-  className?: string;
-  variant?: "primary" | "secondary" | "danger";
+  loading?: boolean
+  disabled?: boolean
+  children: React.ReactNode
+  onClick?: () => void
+  className?: string
+  variant?: 'primary' | 'secondary' | 'danger'
 }
 
 export function LoadingButton({
@@ -335,14 +342,14 @@ export function LoadingButton({
   disabled = false,
   children,
   onClick,
-  className = "",
-  variant = "primary",
+  className = '',
+  variant = 'primary',
 }: LoadingButtonProps) {
   const variantClasses = {
-    primary: "bg-green-600 hover:bg-green-700 text-white",
-    secondary: "bg-slate-700 hover:bg-slate-600 text-white",
-    danger: "bg-red-600 hover:bg-red-700 text-white",
-  };
+    primary: 'bg-green-600 hover:bg-green-700 text-white',
+    secondary: 'bg-slate-700 hover:bg-slate-600 text-white',
+    danger: 'bg-red-600 hover:bg-red-700 text-white',
+  }
 
   return (
     <button
@@ -353,5 +360,5 @@ export function LoadingButton({
       {loading && <Spinner size="sm" />}
       {children}
     </button>
-  );
+  )
 }

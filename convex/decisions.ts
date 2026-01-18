@@ -1,16 +1,16 @@
-import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { v } from 'convex/values'
+import { mutation, query } from './_generated/server'
 
 // Decision type validator
 const decisionTypeValidator = v.union(
-  v.literal("buy_property"),
-  v.literal("auction_bid"),
-  v.literal("jail_strategy"),
-  v.literal("pre_roll_actions"),
-  v.literal("post_roll_actions"),
-  v.literal("trade_response"),
-  v.literal("bankruptcy_resolution")
-);
+  v.literal('buy_property'),
+  v.literal('auction_bid'),
+  v.literal('jail_strategy'),
+  v.literal('pre_roll_actions'),
+  v.literal('post_roll_actions'),
+  v.literal('trade_response'),
+  v.literal('bankruptcy_resolution'),
+)
 
 // ============================================================
 // QUERIES
@@ -21,44 +21,44 @@ const decisionTypeValidator = v.union(
  */
 export const getByGame = query({
   args: {
-    gameId: v.id("games"),
+    gameId: v.id('games'),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let decisionsQuery = ctx.db
-      .query("decisions")
-      .withIndex("by_game", (q) => q.eq("gameId", args.gameId))
-      .order("desc");
+    const decisionsQuery = ctx.db
+      .query('decisions')
+      .withIndex('by_game', (q) => q.eq('gameId', args.gameId))
+      .order('desc')
 
     if (args.limit) {
-      return await decisionsQuery.take(args.limit);
+      return await decisionsQuery.take(args.limit)
     }
 
-    return await decisionsQuery.collect();
+    return await decisionsQuery.collect()
   },
-});
+})
 
 /**
  * Get all decisions for a player
  */
 export const getByPlayer = query({
   args: {
-    playerId: v.id("players"),
+    playerId: v.id('players'),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let decisionsQuery = ctx.db
-      .query("decisions")
-      .withIndex("by_player", (q) => q.eq("playerId", args.playerId))
-      .order("desc");
+    const decisionsQuery = ctx.db
+      .query('decisions')
+      .withIndex('by_player', (q) => q.eq('playerId', args.playerId))
+      .order('desc')
 
     if (args.limit) {
-      return await decisionsQuery.take(args.limit);
+      return await decisionsQuery.take(args.limit)
     }
 
-    return await decisionsQuery.collect();
+    return await decisionsQuery.collect()
   },
-});
+})
 
 /**
  * Get decisions by type (for analytics)
@@ -69,47 +69,47 @@ export const getByType = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let decisionsQuery = ctx.db
-      .query("decisions")
-      .withIndex("by_type", (q) => q.eq("decisionType", args.decisionType))
-      .order("desc");
+    const decisionsQuery = ctx.db
+      .query('decisions')
+      .withIndex('by_type', (q) => q.eq('decisionType', args.decisionType))
+      .order('desc')
 
     if (args.limit) {
-      return await decisionsQuery.take(args.limit);
+      return await decisionsQuery.take(args.limit)
     }
 
-    return await decisionsQuery.collect();
+    return await decisionsQuery.collect()
   },
-});
+})
 
 /**
  * Get a single decision by ID
  */
 export const get = query({
   args: {
-    decisionId: v.id("decisions"),
+    decisionId: v.id('decisions'),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.decisionId);
+    return await ctx.db.get("decisions", args.decisionId)
   },
-});
+})
 
 /**
  * Get decisions for a specific turn
  */
 export const getByTurn = query({
   args: {
-    turnId: v.id("turns"),
+    turnId: v.id('turns'),
   },
   handler: async (ctx, args) => {
     const decisions = await ctx.db
-      .query("decisions")
-      .withIndex("by_game")
-      .collect();
+      .query('decisions')
+      .withIndex('by_game')
+      .collect()
 
-    return decisions.filter((d) => d.turnId === args.turnId);
+    return decisions.filter((d) => d.turnId === args.turnId)
   },
-});
+})
 
 // ============================================================
 // MUTATIONS
@@ -120,9 +120,9 @@ export const getByTurn = query({
  */
 export const create = mutation({
   args: {
-    gameId: v.id("games"),
-    playerId: v.id("players"),
-    turnId: v.id("turns"),
+    gameId: v.id('games'),
+    playerId: v.id('players'),
+    turnId: v.id('turns'),
     turnNumber: v.number(),
     decisionType: decisionTypeValidator,
     context: v.string(), // JSON string with game state context
@@ -136,7 +136,7 @@ export const create = mutation({
     decisionTimeMs: v.number(),
   },
   handler: async (ctx, args) => {
-    const decisionId = await ctx.db.insert("decisions", {
+    const decisionId = await ctx.db.insert('decisions', {
       gameId: args.gameId,
       playerId: args.playerId,
       turnId: args.turnId,
@@ -151,11 +151,11 @@ export const create = mutation({
       promptTokens: args.promptTokens,
       completionTokens: args.completionTokens,
       decisionTimeMs: args.decisionTimeMs,
-    });
+    })
 
-    return decisionId;
+    return decisionId
   },
-});
+})
 
 // ============================================================
 // ANALYTICS HELPERS
@@ -166,13 +166,13 @@ export const create = mutation({
  */
 export const getPlayerStats = query({
   args: {
-    playerId: v.id("players"),
+    playerId: v.id('players'),
   },
   handler: async (ctx, args) => {
     const decisions = await ctx.db
-      .query("decisions")
-      .withIndex("by_player", (q) => q.eq("playerId", args.playerId))
-      .collect();
+      .query('decisions')
+      .withIndex('by_player', (q) => q.eq('playerId', args.playerId))
+      .collect()
 
     // Aggregate stats
     const stats = {
@@ -181,27 +181,27 @@ export const getPlayerStats = query({
       avgDecisionTimeMs: 0,
       totalPromptTokens: 0,
       totalCompletionTokens: 0,
-    };
+    }
 
-    let totalTime = 0;
+    let totalTime = 0
 
     for (const decision of decisions) {
       // Count by type
       stats.byType[decision.decisionType] =
-        (stats.byType[decision.decisionType] || 0) + 1;
+        (stats.byType[decision.decisionType] || 0) + 1
 
       // Sum up metrics
-      totalTime += decision.decisionTimeMs;
-      stats.totalPromptTokens += decision.promptTokens;
-      stats.totalCompletionTokens += decision.completionTokens;
+      totalTime += decision.decisionTimeMs
+      stats.totalPromptTokens += decision.promptTokens
+      stats.totalCompletionTokens += decision.completionTokens
     }
 
     stats.avgDecisionTimeMs =
-      decisions.length > 0 ? totalTime / decisions.length : 0;
+      decisions.length > 0 ? totalTime / decisions.length : 0
 
-    return stats;
+    return stats
   },
-});
+})
 
 /**
  * Get buy decision patterns (for property analytics)
@@ -211,26 +211,26 @@ export const getBuyDecisionStats = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let decisionsQuery = ctx.db
-      .query("decisions")
-      .withIndex("by_type", (q) => q.eq("decisionType", "buy_property"))
-      .order("desc");
+    const decisionsQuery = ctx.db
+      .query('decisions')
+      .withIndex('by_type', (q) => q.eq('decisionType', 'buy_property'))
+      .order('desc')
 
     const decisions = args.limit
       ? await decisionsQuery.take(args.limit)
-      : await decisionsQuery.collect();
+      : await decisionsQuery.collect()
 
     // Count buy vs auction decisions
-    const buyCount = decisions.filter((d) => d.decisionMade === "buy").length;
+    const buyCount = decisions.filter((d) => d.decisionMade === 'buy').length
     const auctionCount = decisions.filter(
-      (d) => d.decisionMade === "auction"
-    ).length;
+      (d) => d.decisionMade === 'auction',
+    ).length
 
     return {
       total: decisions.length,
       bought: buyCount,
       auctioned: auctionCount,
       buyRate: decisions.length > 0 ? buyCount / decisions.length : 0,
-    };
+    }
   },
-});
+})

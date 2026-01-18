@@ -4,19 +4,19 @@ export {
   ModelSelectorWithPreview,
   ModelGridSelector,
   type ModelSelectorProps,
-} from "./ModelSelector";
+} from './ModelSelector'
 export {
   PlayerConfigurator,
   PlayersListConfigurator,
   generateInitialPlayers,
   type PlayerConfig,
   type PlayerConfiguratorProps,
-} from "./PlayerConfigurator";
+} from './PlayerConfigurator'
 export {
   GameSettings,
   getDefaultGameSettings,
   GameSettingsPreview,
   type GameSettingsConfig,
   type GameSettingsProps,
-} from "./GameSettings";
-export { GameConfig } from "./GameConfig";
+} from './GameSettings'
+export { GameConfig } from './GameConfig'

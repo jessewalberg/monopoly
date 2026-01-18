@@ -4,61 +4,61 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
-} from "@tanstack/react-router";
-import * as React from "react";
-import type { QueryClient } from "@tanstack/react-query";
-import appCss from "~/styles/app.css?url";
+} from '@tanstack/react-router'
+import * as React from 'react'
+import type { QueryClient } from '@tanstack/react-query'
+import appCss from '~/styles/app.css?url'
 
 // ============================================================
 // ROUTE DEFINITION
 // ============================================================
 
 export const Route = createRootRouteWithContext<{
-  queryClient: QueryClient;
+  queryClient: QueryClient
 }>()({
   head: () => ({
     meta: [
       {
-        charSet: "utf-8",
+        charSet: 'utf-8',
       },
       {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
       },
       {
-        title: "LLM Monopoly Arena",
+        title: 'LLM Monopoly Arena',
       },
       {
-        name: "description",
-        content: "Watch AI models compete in the classic game of Monopoly",
+        name: 'description',
+        content: 'Watch AI models compete in the classic game of Monopoly',
       },
     ],
     links: [
-      { rel: "stylesheet", href: appCss },
+      { rel: 'stylesheet', href: appCss },
       {
-        rel: "apple-touch-icon",
-        sizes: "180x180",
-        href: "/apple-touch-icon.png",
+        rel: 'apple-touch-icon',
+        sizes: '180x180',
+        href: '/apple-touch-icon.png',
       },
       {
-        rel: "icon",
-        type: "image/png",
-        sizes: "32x32",
-        href: "/favicon-32x32.png",
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '32x32',
+        href: '/favicon-32x32.png',
       },
       {
-        rel: "icon",
-        type: "image/png",
-        sizes: "16x16",
-        href: "/favicon-16x16.png",
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '16x16',
+        href: '/favicon-16x16.png',
       },
-      { rel: "manifest", href: "/site.webmanifest", color: "#fffff" },
-      { rel: "icon", href: "/favicon.ico" },
+      { rel: 'manifest', href: '/site.webmanifest', color: '#fffff' },
+      { rel: 'icon', href: '/favicon.ico' },
     ],
   }),
   notFoundComponent: NotFoundPage,
   component: RootComponent,
-});
+})
 
 // ============================================================
 // ROOT COMPONENT
@@ -75,7 +75,7 @@ function RootComponent() {
         <Footer />
       </div>
     </RootDocument>
-  );
+  )
 }
 
 // ============================================================
@@ -93,7 +93,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
-  );
+  )
 }
 
 // ============================================================
@@ -124,25 +124,19 @@ function Navigation() {
         </div>
       </nav>
     </header>
-  );
+  )
 }
 
-function NavLink({
-  to,
-  children,
-}: {
-  to: string;
-  children: React.ReactNode;
-}) {
+function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
     <Link
       to={to}
       className="px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors [&.active]:bg-green-600/20 [&.active]:text-green-400"
-      activeProps={{ className: "active" }}
+      activeProps={{ className: 'active' }}
     >
       {children}
     </Link>
-  );
+  )
 }
 
 // ============================================================
@@ -159,7 +153,7 @@ function Footer() {
           </div>
           <div className="flex items-center gap-4 text-sm text-slate-500">
             <span>
-              Powered by{" "}
+              Powered by{' '}
               <a
                 href="https://openrouter.ai"
                 target="_blank"
@@ -170,7 +164,7 @@ function Footer() {
               </a>
             </span>
             <span>
-              Built with{" "}
+              Built with{' '}
               <a
                 href="https://convex.dev"
                 target="_blank"
@@ -184,7 +178,7 @@ function Footer() {
         </div>
       </div>
     </footer>
-  );
+  )
 }
 
 // ============================================================
@@ -206,5 +200,5 @@ function NotFoundPage() {
         Return to GO
       </Link>
     </div>
-  );
+  )
 }

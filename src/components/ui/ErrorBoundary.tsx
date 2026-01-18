@@ -1,18 +1,19 @@
-import { Component, type ReactNode } from "react";
+import { Component  } from 'react'
+import type {ReactNode} from 'react';
 
 // ============================================================
 // TYPES
 // ============================================================
 
 interface ErrorBoundaryProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  children: ReactNode
+  fallback?: ReactNode
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void
 }
 
 interface ErrorBoundaryState {
-  hasError: boolean;
-  error: Error | null;
+  hasError: boolean
+  error: Error | null
 }
 
 // ============================================================
@@ -22,40 +23,40 @@ interface ErrorBoundaryState {
 /**
  * Error boundary to catch React rendering errors
  */
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
+    super(props)
+    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
+    return { hasError: true, error }
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
-    this.props.onError?.(error, errorInfo);
+    console.error('ErrorBoundary caught an error:', error, errorInfo)
+    this.props.onError?.(error, errorInfo)
   }
 
   handleRetry = (): void => {
-    this.setState({ hasError: false, error: null });
-  };
+    this.setState({ hasError: false, error: null })
+  }
 
   render(): ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return this.props.fallback;
+        return this.props.fallback
       }
 
       return (
-        <ErrorFallback
-          error={this.state.error}
-          onRetry={this.handleRetry}
-        />
-      );
+        <ErrorFallback error={this.state.error} onRetry={this.handleRetry} />
+      )
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }
 
@@ -64,26 +65,28 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 // ============================================================
 
 interface ErrorFallbackProps {
-  error: Error | null;
-  onRetry?: () => void;
-  title?: string;
-  description?: string;
+  error: Error | null
+  onRetry?: () => void
+  title?: string
+  description?: string
 }
 
 export function ErrorFallback({
   error,
   onRetry,
-  title = "Something went wrong",
+  title = 'Something went wrong',
   description,
 }: ErrorFallbackProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[200px] p-8 text-center">
       <div className="text-5xl mb-4">
-        <span role="img" aria-label="Error">💥</span>
+        <span role="img" aria-label="Error">
+          💥
+        </span>
       </div>
       <h2 className="text-xl font-bold text-white mb-2">{title}</h2>
       <p className="text-slate-400 mb-4 max-w-md">
-        {description || "We encountered an unexpected error. Please try again."}
+        {description || 'We encountered an unexpected error. Please try again.'}
       </p>
       {error && (
         <details className="mb-4 max-w-md text-left">
@@ -104,7 +107,7 @@ export function ErrorFallback({
         </button>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -112,18 +115,21 @@ export function ErrorFallback({
 // ============================================================
 
 interface QueryErrorProps {
-  error: Error | string | null;
-  onRetry?: () => void;
+  error: Error | string | null
+  onRetry?: () => void
 }
 
 export function QueryError({ error, onRetry }: QueryErrorProps) {
-  const errorMessage = typeof error === "string" ? error : error?.message || "Unknown error";
+  const errorMessage =
+    typeof error === 'string' ? error : error?.message || 'Unknown error'
 
   return (
     <div className="bg-red-900/20 border border-red-800 rounded-lg p-4">
       <div className="flex items-start gap-3">
         <span className="text-red-400 text-xl">
-          <span role="img" aria-label="Warning">⚠️</span>
+          <span role="img" aria-label="Warning">
+            ⚠️
+          </span>
         </span>
         <div className="flex-1">
           <h3 className="text-red-400 font-medium">Error loading data</h3>
@@ -139,7 +145,7 @@ export function QueryError({ error, onRetry }: QueryErrorProps) {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -147,14 +153,16 @@ export function QueryError({ error, onRetry }: QueryErrorProps) {
 // ============================================================
 
 interface ConnectionErrorProps {
-  onRetry?: () => void;
+  onRetry?: () => void
 }
 
 export function ConnectionError({ onRetry }: ConnectionErrorProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[200px] p-8 text-center">
       <div className="text-5xl mb-4">
-        <span role="img" aria-label="Disconnected">🔌</span>
+        <span role="img" aria-label="Disconnected">
+          🔌
+        </span>
       </div>
       <h2 className="text-xl font-bold text-white mb-2">Connection Lost</h2>
       <p className="text-slate-400 mb-4">
@@ -169,7 +177,7 @@ export function ConnectionError({ onRetry }: ConnectionErrorProps) {
         </button>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -177,22 +185,24 @@ export function ConnectionError({ onRetry }: ConnectionErrorProps) {
 // ============================================================
 
 interface NotFoundProps {
-  title?: string;
-  description?: string;
-  actionLabel?: string;
-  onAction?: () => void;
+  title?: string
+  description?: string
+  actionLabel?: string
+  onAction?: () => void
 }
 
 export function NotFound({
-  title = "Not Found",
+  title = 'Not Found',
   description = "The page or resource you're looking for doesn't exist.",
-  actionLabel = "Go Back",
+  actionLabel = 'Go Back',
   onAction,
 }: NotFoundProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[300px] p-8 text-center">
       <div className="text-6xl mb-4">
-        <span role="img" aria-label="Not found">🔍</span>
+        <span role="img" aria-label="Not found">
+          🔍
+        </span>
       </div>
       <h2 className="text-2xl font-bold text-white mb-2">{title}</h2>
       <p className="text-slate-400 mb-6 max-w-md">{description}</p>
@@ -205,5 +215,5 @@ export function NotFound({
         </button>
       )}
     </div>
-  );
+  )
 }

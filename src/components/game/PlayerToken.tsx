@@ -1,4 +1,4 @@
-import type { Id } from "../../../convex/_generated/dataModel";
+import type { Id } from '../../../convex/_generated/dataModel'
 
 // ============================================================
 // TYPES
@@ -6,15 +6,15 @@ import type { Id } from "../../../convex/_generated/dataModel";
 
 export interface PlayerTokenProps {
   player: {
-    _id: Id<"players">;
-    modelDisplayName: string;
-    tokenColor: string;
-    textColor: string;
-  };
-  isCurrentPlayer?: boolean;
-  size?: "xs" | "sm" | "md" | "lg";
-  offset?: number; // For stacking multiple tokens
-  showName?: boolean;
+    _id: Id<'players'>
+    modelDisplayName: string
+    tokenColor: string
+    textColor: string
+  }
+  isCurrentPlayer?: boolean
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  offset?: number // For stacking multiple tokens
+  showName?: boolean
 }
 
 // ============================================================
@@ -23,26 +23,26 @@ export interface PlayerTokenProps {
 
 const sizeStyles = {
   xs: {
-    container: "w-3 h-3",
-    text: "text-[4px]",
-    ring: "ring-1",
+    container: 'w-3 h-3',
+    text: 'text-[4px]',
+    ring: 'ring-1',
   },
   sm: {
-    container: "w-5 h-5",
-    text: "text-[6px]",
-    ring: "ring-1",
+    container: 'w-5 h-5',
+    text: 'text-[6px]',
+    ring: 'ring-1',
   },
   md: {
-    container: "w-8 h-8",
-    text: "text-xs",
-    ring: "ring-2",
+    container: 'w-8 h-8',
+    text: 'text-xs',
+    ring: 'ring-2',
   },
   lg: {
-    container: "w-10 h-10",
-    text: "text-sm",
-    ring: "ring-2",
+    container: 'w-10 h-10',
+    text: 'text-sm',
+    ring: 'ring-2',
   },
-};
+}
 
 // ============================================================
 // PLAYER TOKEN COMPONENT
@@ -51,28 +51,26 @@ const sizeStyles = {
 export function PlayerToken({
   player,
   isCurrentPlayer = false,
-  size = "md",
+  size = 'md',
   offset = 0,
   showName = false,
 }: PlayerTokenProps) {
-  const styles = sizeStyles[size];
+  const styles = sizeStyles[size]
 
   // Get initials from model name
-  const initials = getInitials(player.modelDisplayName);
+  const initials = getInitials(player.modelDisplayName)
 
   // Stack offset for multiple tokens on same space
-  const offsetStyles = offset > 0
-    ? {
-        transform: `translate(${offset * -3}px, ${offset * -3}px)`,
-        zIndex: offset,
-      }
-    : {};
+  const offsetStyles =
+    offset > 0
+      ? {
+          transform: `translate(${offset * -3}px, ${offset * -3}px)`,
+          zIndex: offset,
+        }
+      : {}
 
   return (
-    <div
-      className="flex flex-col items-center gap-0.5"
-      style={offsetStyles}
-    >
+    <div className="flex flex-col items-center gap-0.5" style={offsetStyles}>
       <div
         className={`
           ${styles.container}
@@ -80,7 +78,7 @@ export function PlayerToken({
           flex items-center justify-center
           font-bold
           shadow-md
-          ${isCurrentPlayer ? `${styles.ring} ring-yellow-400 ring-offset-1 ring-offset-slate-900` : ""}
+          ${isCurrentPlayer ? `${styles.ring} ring-yellow-400 ring-offset-1 ring-offset-slate-900` : ''}
           transition-all duration-200
         `}
         style={{
@@ -97,7 +95,7 @@ export function PlayerToken({
         </span>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -106,19 +104,19 @@ export function PlayerToken({
 
 function getInitials(name: string): string {
   // Handle common model names
-  const words = name.split(/[\s-]+/);
+  const words = name.split(/[\s-]+/)
 
   if (words.length === 1) {
     // Single word: take first 2 characters
-    return words[0].slice(0, 2).toUpperCase();
+    return words[0].slice(0, 2).toUpperCase()
   }
 
   // Multiple words: take first letter of first 2 words
   return words
     .slice(0, 2)
     .map((w) => w[0])
-    .join("")
-    .toUpperCase();
+    .join('')
+    .toUpperCase()
 }
 
 // ============================================================
@@ -130,9 +128,9 @@ export function TokenColorPreview({
   textColor,
   selected = false,
 }: {
-  color: string;
-  textColor: string;
-  selected?: boolean;
+  color: string
+  textColor: string
+  selected?: boolean
 }) {
   return (
     <div
@@ -141,7 +139,7 @@ export function TokenColorPreview({
         flex items-center justify-center
         cursor-pointer
         transition-transform
-        ${selected ? "ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110" : "hover:scale-110"}
+        ${selected ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110' : 'hover:scale-110'}
       `}
       style={{ backgroundColor: color, color: textColor }}
     >
@@ -161,5 +159,5 @@ export function TokenColorPreview({
         </svg>
       )}
     </div>
-  );
+  )
 }

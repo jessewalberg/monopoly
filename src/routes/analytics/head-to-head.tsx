@@ -1,37 +1,41 @@
-import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "../../../convex/_generated/api";
-import { Card, CardBody, CardHeader } from "../../components/ui/Card";
+import { useMemo, useState } from 'react'
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { convexQuery } from '@convex-dev/react-query'
+import { api } from '../../../convex/_generated/api'
+import { Card, CardBody, CardHeader } from '../../components/ui/Card'
 import {
   HeadToHeadComparison,
   HeadToHeadMatrix,
-} from "../../components/analytics";
-import { AVAILABLE_MODELS } from "../../lib/models";
+} from '../../components/analytics'
+import { AVAILABLE_MODELS } from '../../lib/models'
+import type { FunctionArgs } from 'convex/server'
 
 // ============================================================
 // ROUTE DEFINITION
 // ============================================================
 
-export const Route = createFileRoute("/analytics/head-to-head")({
+export const Route = createFileRoute('/analytics/head-to-head')({
   component: HeadToHeadPage,
-});
+})
 
 // ============================================================
 // HEAD TO HEAD PAGE
 // ============================================================
 
 function HeadToHeadPage() {
-  const [selectedModel1, setSelectedModel1] = useState<string>("");
-  const [selectedModel2, setSelectedModel2] = useState<string>("");
+  const [selectedModel1, setSelectedModel1] = useState<string>('')
+  const [selectedModel2, setSelectedModel2] = useState<string>('')
 
   const { data: headToHeadMatrix } = useSuspenseQuery(
-    convexQuery(api.analytics.getHeadToHeadMatrix, {})
-  );
+    convexQuery(api.analytics.getHeadToHeadMatrix, {}),
+  )
+  const leaderboardArgs = {
+    sortBy: 'wins',
+  } satisfies FunctionArgs<typeof api.analytics.getLeaderboard>
   const { data: leaderboard } = useSuspenseQuery(
-    convexQuery(api.analytics.getLeaderboard, { sortBy: "wins" })
-  );
+    convexQuery(api.analytics.getLeaderboard, leaderboardArgs),
+  )
 
   const modelOptions = useMemo(() => {
     if (leaderboard.length > 0) {
@@ -39,34 +43,39 @@ function HeadToHeadPage() {
         id: model.modelId,
         name: model.modelDisplayName,
         provider: model.modelProvider,
-      }));
+      }))
     }
     return AVAILABLE_MODELS.map((model) => ({
       id: model.id,
       name: model.name,
       provider: model.provider,
-    }));
-  }, [leaderboard]);
+    }))
+  }, [leaderboard])
 
   const h2hRecord = useMemo(() => {
-    if (!selectedModel1 || !selectedModel2) return null;
-    if (selectedModel1 === selectedModel2) return null;
-    const record =
-      headToHeadMatrix.matrix[selectedModel1]?.[selectedModel2] || null;
+    if (!selectedModel1 || !selectedModel2) return null
+    if (selectedModel1 === selectedModel2) return null
+
+    const matrix = headToHeadMatrix.matrix as Record<
+      string,
+      Record<string, { wins: number; losses: number; totalGames: number }> | undefined
+    >
+    const record = matrix[selectedModel1]?.[selectedModel2]
+
     return record
       ? {
           modelAWins: record.wins,
           modelBWins: record.losses,
           totalGames: record.totalGames,
         }
-      : { modelAWins: 0, modelBWins: 0, totalGames: 0 };
-  }, [headToHeadMatrix, selectedModel1, selectedModel2]);
+      : { modelAWins: 0, modelBWins: 0, totalGames: 0 }
+  }, [headToHeadMatrix, selectedModel1, selectedModel2])
 
   const displayName = (modelId: string) =>
     headToHeadMatrix.modelDisplayNames[modelId] ||
     modelOptions.find((model) => model.id === modelId)?.name ||
-    modelId.split("/").pop() ||
-    "Unknown";
+    modelId.split('/').pop() ||
+    'Unknown'
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto">
@@ -96,7 +105,11 @@ function HeadToHeadPage() {
             >
               <option value="">Select a model...</option>
               {modelOptions.map((model) => (
-                <option key={model.id} value={model.id} disabled={model.id === selectedModel2}>
+                <option
+                  key={model.id}
+                  value={model.id}
+                  disabled={model.id === selectedModel2}
+                >
                   {model.name} ({model.provider})
                 </option>
               ))}
@@ -116,7 +129,11 @@ function HeadToHeadPage() {
             >
               <option value="">Select a model...</option>
               {modelOptions.map((model) => (
-                <option key={model.id} value={model.id} disabled={model.id === selectedModel1}>
+                <option
+                  key={model.id}
+                  value={model.id}
+                  disabled={model.id === selectedModel1}
+                >
                   {model.name} ({model.provider})
                 </option>
               ))}
@@ -182,5 +199,5 @@ function HeadToHeadPage() {
         </CardBody>
       </Card>
     </div>
-  );
+  )
 }

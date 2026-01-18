@@ -3,7 +3,7 @@
   "routes": [
     {
       "pattern": "monopoly-llm.jessewalberg.com",
-      "custom_domain": true
+      "custom_domain": true,
     },
   ],
   "name": "monopoly-llm",
@@ -11,6 +11,6 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
   "observability": {
-    "enabled": true
-  }
+    "enabled": true,
+  },
 }

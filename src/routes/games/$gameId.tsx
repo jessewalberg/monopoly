@@ -1,124 +1,128 @@
-import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
-import { Board } from "../../components/game/Board";
-import { Card, CardBody, CardHeader } from "../../components/ui/Card";
-import { Badge } from "../../components/ui/Badge";
-import { Button } from "../../components/ui/Button";
+import { useState } from 'react'
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { convexQuery } from '@convex-dev/react-query'
+import { api } from '../../../convex/_generated/api'
+import { Board } from '../../components/game/Board'
+import { Card, CardBody, CardHeader } from '../../components/ui/Card'
+import { Badge } from '../../components/ui/Badge'
+import { Button } from '../../components/ui/Button'
+import type { Id } from '../../../convex/_generated/dataModel'
 
 // ============================================================
 // ROUTE DEFINITION
 // ============================================================
 
-export const Route = createFileRoute("/games/$gameId")({
+export const Route = createFileRoute('/games/$gameId')({
   component: GameReplayPage,
-});
+})
 
 // ============================================================
 // GAME REPLAY PAGE
 // ============================================================
 
 function GameReplayPage() {
-  const { gameId } = Route.useParams();
-  const typedGameId = gameId as Id<"games">;
+  const { gameId } = Route.useParams()
+  const typedGameId = gameId as Id<'games'>
 
   // Selected turn for replay
-  const [selectedTurn, setSelectedTurn] = useState<number>(1);
+  const [selectedTurn, setSelectedTurn] = useState<number>(1)
 
   // Get game state
   const { data: gameState } = useSuspenseQuery(
-    convexQuery(api.games.getFullState, { gameId: typedGameId })
-  );
+    convexQuery(api.games.getFullState, { gameId: typedGameId }),
+  )
 
   // Get all turns
   const { data: allTurns } = useSuspenseQuery(
-    convexQuery(api.turns.getByGame, { gameId: typedGameId })
-  );
+    convexQuery(api.turns.getByGame, { gameId: typedGameId }),
+  )
 
   // Get property transfer history
   const { data: propertyTransfers } = useSuspenseQuery(
-    convexQuery(api.propertyTransfers.getByGame, { gameId: typedGameId })
-  );
+    convexQuery(api.propertyTransfers.getByGame, { gameId: typedGameId }),
+  )
 
   // Get property state history (houses/mortgage)
   const { data: propertyStateEvents } = useSuspenseQuery(
-    convexQuery(api.propertyStateEvents.getByGame, { gameId: typedGameId })
-  );
+    convexQuery(api.propertyStateEvents.getByGame, { gameId: typedGameId }),
+  )
 
   if (!gameState) {
     return (
       <div className="p-8 text-center">
         <h1 className="text-2xl font-bold text-white mb-4">Game Not Found</h1>
-        <Link
-          to="/games"
-          className="text-green-400 hover:text-green-300"
-        >
+        <Link to="/games" className="text-green-400 hover:text-green-300">
           Back to History
         </Link>
       </div>
-    );
+    )
   }
 
-  const { game, players, properties } = gameState;
-  const winner = players.find((p) => p._id === game.winnerId);
+  const { game, players, properties } = gameState
+  const winner = players.find((p) => p._id === game.winnerId)
 
   // Sort turns by turn number
-  const sortedTurns = [...allTurns].sort((a, b) => a.turnNumber - b.turnNumber);
-  const maxTurn = sortedTurns.length > 0 ? sortedTurns[sortedTurns.length - 1].turnNumber : 1;
-  const currentTurnData = sortedTurns.find((t) => t.turnNumber === selectedTurn);
+  const sortedTurns = [...allTurns].sort((a, b) => a.turnNumber - b.turnNumber)
+  const maxTurn =
+    sortedTurns.length > 0 ? sortedTurns[sortedTurns.length - 1].turnNumber : 1
+  const currentTurnData = sortedTurns.find((t) => t.turnNumber === selectedTurn)
 
   // Transform for board at selected turn
   // Note: For a full replay, we'd need to reconstruct board state at each turn
   // For now, we show the final state but highlight the selected turn info
   const boardPlayers = players.map((p) => ({
     _id: p._id,
-    position: currentTurnData?.playerId === p._id
-      ? (currentTurnData.positionAfter ?? currentTurnData.positionBefore)
-      : p.position,
+    position:
+      currentTurnData?.playerId === p._id
+        ? (currentTurnData.positionAfter ?? currentTurnData.positionBefore)
+        : p.position,
     modelDisplayName: p.modelDisplayName,
     tokenColor: p.tokenColor,
-    textColor: "#FFFFFF",
+    textColor: '#FFFFFF',
     inJail: p.inJail,
-  }));
+  }))
 
-  const transfersUpToTurn = (propertyTransfers ?? [])
+  const transfersUpToTurn = propertyTransfers
     .filter((t: { turnNumber: number }) => t.turnNumber <= selectedTurn)
     .sort(
-      (a: { turnNumber: number; createdAt: number }, b: { turnNumber: number; createdAt: number }) =>
-        a.turnNumber - b.turnNumber || a.createdAt - b.createdAt
-    );
+      (
+        a: { turnNumber: number; createdAt: number },
+        b: { turnNumber: number; createdAt: number },
+      ) => a.turnNumber - b.turnNumber || a.createdAt - b.createdAt,
+    )
 
-  const ownerByPropertyId = new Map<Id<"properties">, Id<"players"> | undefined>();
+  const ownerByPropertyId = new Map<
+    Id<'properties'>,
+    Id<'players'> | undefined
+  >()
   for (const transfer of transfersUpToTurn) {
-    ownerByPropertyId.set(transfer.propertyId, transfer.toOwnerId);
+    ownerByPropertyId.set(transfer.propertyId, transfer.toOwnerId)
   }
 
-  const stateEventsUpToTurn = (propertyStateEvents ?? [])
+  const stateEventsUpToTurn = propertyStateEvents
     .filter((event: { turnNumber: number }) => event.turnNumber <= selectedTurn)
     .sort(
       (
         a: { turnNumber: number; createdAt: number },
-        b: { turnNumber: number; createdAt: number }
-      ) => a.turnNumber - b.turnNumber || a.createdAt - b.createdAt
-    );
+        b: { turnNumber: number; createdAt: number },
+      ) => a.turnNumber - b.turnNumber || a.createdAt - b.createdAt,
+    )
 
   const stateByPropertyId = new Map<
-    Id<"properties">,
+    Id<'properties'>,
     { houses: number; isMortgaged: boolean }
-  >();
+  >()
 
   for (const event of stateEventsUpToTurn) {
     const prev = stateByPropertyId.get(event.propertyId) ?? {
       houses: 0,
       isMortgaged: false,
-    };
+    }
     stateByPropertyId.set(event.propertyId, {
       houses: event.houses ?? prev.houses,
       isMortgaged: event.isMortgaged ?? prev.isMortgaged,
-    });
+    })
   }
 
   const boardProperties = properties.map((prop) => ({
@@ -126,7 +130,7 @@ function GameReplayPage() {
     ownerId: ownerByPropertyId.get(prop._id) ?? undefined,
     houses: stateByPropertyId.get(prop._id)?.houses ?? 0,
     isMortgaged: stateByPropertyId.get(prop._id)?.isMortgaged ?? false,
-  }));
+  }))
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto">
@@ -144,10 +148,10 @@ function GameReplayPage() {
           </h1>
         </div>
         <Badge
-          variant={game.status === "completed" ? "success" : "neutral"}
+          variant={game.status === 'completed' ? 'success' : 'neutral'}
           size="md"
         >
-          {game.status.replace("_", " ")}
+          {game.status.replace('_', ' ')}
         </Badge>
       </div>
 
@@ -155,7 +159,11 @@ function GameReplayPage() {
       {winner && (
         <div
           className="rounded-lg p-4 mb-6 flex items-center gap-4"
-          style={{ backgroundColor: `${winner.tokenColor}20`, borderColor: winner.tokenColor, borderWidth: 1 }}
+          style={{
+            backgroundColor: `${winner.tokenColor}20`,
+            borderColor: winner.tokenColor,
+            borderWidth: 1,
+          }}
         >
           <span className="text-3xl">🏆</span>
           <div>
@@ -163,7 +171,8 @@ function GameReplayPage() {
               {winner.modelDisplayName} Won!
             </div>
             <div className="text-sm text-slate-300">
-              {game.endingReason?.replace("_", " ")} after {game.currentTurnNumber} turns
+              {game.endingReason?.replace('_', ' ')} after{' '}
+              {game.currentTurnNumber} turns
             </div>
           </div>
         </div>
@@ -212,14 +221,18 @@ function GameReplayPage() {
                 />
                 <div className="flex justify-between text-sm text-slate-400">
                   <span>Turn 1</span>
-                  <span className="text-white font-medium">Turn {selectedTurn}</span>
+                  <span className="text-white font-medium">
+                    Turn {selectedTurn}
+                  </span>
                   <span>Turn {maxTurn}</span>
                 </div>
                 <div className="flex gap-2">
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => setSelectedTurn(Math.max(1, selectedTurn - 1))}
+                    onClick={() =>
+                      setSelectedTurn(Math.max(1, selectedTurn - 1))
+                    }
                     disabled={selectedTurn <= 1}
                   >
                     ←
@@ -227,7 +240,9 @@ function GameReplayPage() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => setSelectedTurn(Math.min(maxTurn, selectedTurn + 1))}
+                    onClick={() =>
+                      setSelectedTurn(Math.min(maxTurn, selectedTurn + 1))
+                    }
                     disabled={selectedTurn >= maxTurn}
                   >
                     →
@@ -241,7 +256,9 @@ function GameReplayPage() {
           {currentTurnData && (
             <Card>
               <CardHeader>
-                <h3 className="text-lg font-bold text-white">Turn {selectedTurn}</h3>
+                <h3 className="text-lg font-bold text-white">
+                  Turn {selectedTurn}
+                </h3>
               </CardHeader>
               <CardBody>
                 <div className="space-y-3">
@@ -253,12 +270,16 @@ function GameReplayPage() {
                         className="w-4 h-4 rounded-full"
                         style={{
                           backgroundColor: players.find(
-                            (p) => p._id === currentTurnData.playerId
+                            (p) => p._id === currentTurnData.playerId,
                           )?.tokenColor,
                         }}
                       />
                       <span className="text-white">
-                        {players.find((p) => p._id === currentTurnData.playerId)?.modelDisplayName}
+                        {
+                          players.find(
+                            (p) => p._id === currentTurnData.playerId,
+                          )?.modelDisplayName
+                        }
                       </span>
                     </div>
                   </div>
@@ -268,9 +289,14 @@ function GameReplayPage() {
                     <div>
                       <span className="text-sm text-slate-400">Dice Roll</span>
                       <div className="text-white mt-1">
-                        {currentTurnData.diceRoll[0]} + {currentTurnData.diceRoll[1]} = {currentTurnData.diceRoll[0] + currentTurnData.diceRoll[1]}
+                        {currentTurnData.diceRoll[0]} +{' '}
+                        {currentTurnData.diceRoll[1]} ={' '}
+                        {currentTurnData.diceRoll[0] +
+                          currentTurnData.diceRoll[1]}
                         {currentTurnData.wasDoubles && (
-                          <Badge variant="warning" size="sm" className="ml-2">Doubles!</Badge>
+                          <Badge variant="warning" size="sm" className="ml-2">
+                            Doubles!
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -280,7 +306,9 @@ function GameReplayPage() {
                   {currentTurnData.landedOn && (
                     <div>
                       <span className="text-sm text-slate-400">Landed On</span>
-                      <div className="text-white mt-1">{currentTurnData.landedOn}</div>
+                      <div className="text-white mt-1">
+                        {currentTurnData.landedOn}
+                      </div>
                     </div>
                   )}
 
@@ -289,21 +317,28 @@ function GameReplayPage() {
                     <span className="text-sm text-slate-400">Cash</span>
                     <div className="text-white mt-1">
                       ${currentTurnData.cashBefore}
-                      {currentTurnData.cashAfter !== undefined && currentTurnData.cashAfter !== currentTurnData.cashBefore && (
-                        <span
-                          className={
-                            currentTurnData.cashAfter > currentTurnData.cashBefore
-                              ? "text-green-400"
-                              : "text-red-400"
-                          }
-                        >
-                          {" → "}${currentTurnData.cashAfter}
-                          {" ("}
-                          {currentTurnData.cashAfter > currentTurnData.cashBefore ? "+" : ""}
-                          {currentTurnData.cashAfter - currentTurnData.cashBefore}
-                          {")"}
-                        </span>
-                      )}
+                      {currentTurnData.cashAfter !== undefined &&
+                        currentTurnData.cashAfter !==
+                          currentTurnData.cashBefore && (
+                          <span
+                            className={
+                              currentTurnData.cashAfter >
+                              currentTurnData.cashBefore
+                                ? 'text-green-400'
+                                : 'text-red-400'
+                            }
+                          >
+                            {' → '}${currentTurnData.cashAfter}
+                            {' ('}
+                            {currentTurnData.cashAfter >
+                            currentTurnData.cashBefore
+                              ? '+'
+                              : ''}
+                            {currentTurnData.cashAfter -
+                              currentTurnData.cashBefore}
+                            {')'}
+                          </span>
+                        )}
                     </div>
                   </div>
 
@@ -334,11 +369,13 @@ function GameReplayPage() {
               <div className="space-y-2">
                 {[...players]
                   .sort((a, b) => {
-                    if (a._id === game.winnerId) return -1;
-                    if (b._id === game.winnerId) return 1;
-                    if (a.isBankrupt && !b.isBankrupt) return 1;
-                    if (!a.isBankrupt && b.isBankrupt) return -1;
-                    return (b.finalNetWorth || b.cash) - (a.finalNetWorth || a.cash);
+                    if (a._id === game.winnerId) return -1
+                    if (b._id === game.winnerId) return 1
+                    if (a.isBankrupt && !b.isBankrupt) return 1
+                    if (!a.isBankrupt && b.isBankrupt) return -1
+                    return (
+                      (b.finalNetWorth || b.cash) - (a.finalNetWorth || a.cash)
+                    )
                   })
                   .map((player, idx) => (
                     <div
@@ -357,7 +394,9 @@ function GameReplayPage() {
                       </div>
                       <div className="text-right">
                         {player.isBankrupt ? (
-                          <Badge variant="error" size="sm">Bankrupt</Badge>
+                          <Badge variant="error" size="sm">
+                            Bankrupt
+                          </Badge>
                         ) : (
                           <span className="text-green-400 text-sm">
                             ${player.finalNetWorth || player.cash}
@@ -372,5 +411,5 @@ function GameReplayPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

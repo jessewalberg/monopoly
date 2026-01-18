@@ -1,30 +1,30 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from 'react'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  children: ReactNode;
+  children: ReactNode
 }
 
 export interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {
-  children: ReactNode;
+  children: ReactNode
 }
 
 export interface CardBodyProps extends HTMLAttributes<HTMLDivElement> {
-  children: ReactNode;
+  children: ReactNode
 }
 
 export interface CardFooterProps extends HTMLAttributes<HTMLDivElement> {
-  children: ReactNode;
+  children: ReactNode
 }
 
 // ============================================================
 // CARD COMPONENTS
 // ============================================================
 
-export function Card({ children, className = "", ...props }: CardProps) {
+export function Card({ children, className = '', ...props }: CardProps) {
   return (
     <div
       className={`bg-slate-800 rounded-lg shadow-lg overflow-hidden ${className}`}
@@ -32,12 +32,12 @@ export function Card({ children, className = "", ...props }: CardProps) {
     >
       {children}
     </div>
-  );
+  )
 }
 
 export function CardHeader({
   children,
-  className = "",
+  className = '',
   ...props
 }: CardHeaderProps) {
   return (
@@ -47,20 +47,24 @@ export function CardHeader({
     >
       {children}
     </div>
-  );
+  )
 }
 
-export function CardBody({ children, className = "", ...props }: CardBodyProps) {
+export function CardBody({
+  children,
+  className = '',
+  ...props
+}: CardBodyProps) {
   return (
     <div className={`p-4 ${className}`} {...props}>
       {children}
     </div>
-  );
+  )
 }
 
 export function CardFooter({
   children,
-  className = "",
+  className = '',
   ...props
 }: CardFooterProps) {
   return (
@@ -70,5 +74,5 @@ export function CardFooter({
     >
       {children}
     </div>
-  );
+  )
 }

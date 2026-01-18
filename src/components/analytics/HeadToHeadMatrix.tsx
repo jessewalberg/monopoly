@@ -1,24 +1,24 @@
-import { useState } from "react";
+import { useState } from 'react'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface HeadToHeadRecord {
-  wins: number;
-  losses: number;
-  totalGames: number;
+  wins: number
+  losses: number
+  totalGames: number
 }
 
 export interface HeadToHeadMatrixData {
-  matrix: Record<string, Record<string, HeadToHeadRecord>>;
-  modelDisplayNames: Record<string, string>;
-  models: string[];
+  matrix: Record<string, Record<string, HeadToHeadRecord> | undefined>
+  modelDisplayNames: Record<string, string>
+  models: Array<string>
 }
 
 export interface HeadToHeadMatrixProps {
-  data: HeadToHeadMatrixData;
-  maxModels?: number;
+  data: HeadToHeadMatrixData
+  maxModels?: number
 }
 
 // ============================================================
@@ -30,35 +30,37 @@ export function HeadToHeadMatrix({
   maxModels = 8,
 }: HeadToHeadMatrixProps) {
   const [hoveredCell, setHoveredCell] = useState<{
-    rowModel: string;
-    colModel: string;
-    record: HeadToHeadRecord;
-  } | null>(null);
+    rowModel: string
+    colModel: string
+    record: HeadToHeadRecord
+  } | null>(null)
 
-  const { matrix, modelDisplayNames, models } = data;
+  const { matrix, modelDisplayNames, models } = data
 
   // Limit to maxModels
-  const displayModels = models.slice(0, maxModels);
+  const displayModels = models.slice(0, maxModels)
 
   if (displayModels.length === 0) {
     return (
       <div className="text-center py-8 text-slate-400">
         <div className="text-4xl mb-2">⚔️</div>
         <p>No head-to-head data yet</p>
-        <p className="text-sm mt-1">Play games with multiple models to see matchups!</p>
+        <p className="text-sm mt-1">
+          Play games with multiple models to see matchups!
+        </p>
       </div>
-    );
+    )
   }
 
   // Get short name for display
   const getShortName = (modelId: string): string => {
-    const displayName = modelDisplayNames[modelId] || modelId;
+    const displayName = modelDisplayNames[modelId] || modelId
     // Return first 8 chars or split by / and take last part
-    if (displayName.length <= 8) return displayName;
-    const parts = displayName.split("/");
-    const name = parts[parts.length - 1];
-    return name.length <= 8 ? name : name.slice(0, 7) + "…";
-  };
+    if (displayName.length <= 8) return displayName
+    const parts = displayName.split('/')
+    const name = parts[parts.length - 1]
+    return name.length <= 8 ? name : name.slice(0, 7) + '…'
+  }
 
   return (
     <div className="relative">
@@ -66,7 +68,7 @@ export function HeadToHeadMatrix({
       {hoveredCell && (
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-600 rounded-lg p-3 shadow-xl z-10 whitespace-nowrap">
           <div className="text-white font-medium text-sm">
-            {modelDisplayNames[hoveredCell.rowModel]} vs{" "}
+            {modelDisplayNames[hoveredCell.rowModel]} vs{' '}
             {modelDisplayNames[hoveredCell.colModel]}
           </div>
           <div className="text-slate-400 text-xs mt-1">
@@ -115,14 +117,14 @@ export function HeadToHeadMatrix({
                       >
                         —
                       </td>
-                    );
+                    )
                   }
 
                   const record = matrix[rowModel]?.[colModel] || {
                     wins: 0,
                     losses: 0,
                     totalGames: 0,
-                  };
+                  }
 
                   return (
                     <MatrixCell
@@ -132,11 +134,11 @@ export function HeadToHeadMatrix({
                       colModel={colModel}
                       onHover={(isHovered) =>
                         setHoveredCell(
-                          isHovered ? { rowModel, colModel, record } : null
+                          isHovered ? { rowModel, colModel, record } : null,
                         )
                       }
                     />
-                  );
+                  )
                 })}
               </tr>
             ))}
@@ -166,7 +168,7 @@ export function HeadToHeadMatrix({
         </p>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -174,14 +176,14 @@ export function HeadToHeadMatrix({
 // ============================================================
 
 interface MatrixCellProps {
-  record: HeadToHeadRecord;
-  rowModel: string;
-  colModel: string;
-  onHover: (isHovered: boolean) => void;
+  record: HeadToHeadRecord
+  rowModel: string
+  colModel: string
+  onHover: (isHovered: boolean) => void
 }
 
 function MatrixCell({ record, onHover }: MatrixCellProps) {
-  const { wins, losses, totalGames } = record;
+  const { wins, losses, totalGames } = record
 
   if (totalGames === 0) {
     return (
@@ -192,30 +194,30 @@ function MatrixCell({ record, onHover }: MatrixCellProps) {
       >
         0-0
       </td>
-    );
+    )
   }
 
   // Calculate win ratio for color intensity
-  const winRatio = wins / totalGames;
-  const lossRatio = losses / totalGames;
+  const winRatio = wins / totalGames
+  const lossRatio = losses / totalGames
 
-  let bgColor: string;
-  let textColor: string;
+  let bgColor: string
+  let textColor: string
 
   if (winRatio > lossRatio) {
     // More wins - green
-    const intensity = Math.min(0.8, (winRatio - 0.5) * 2);
-    bgColor = `rgba(34, 197, 94, ${0.2 + intensity * 0.4})`;
-    textColor = winRatio > 0.6 ? "text-green-300" : "text-green-400";
+    const intensity = Math.min(0.8, (winRatio - 0.5) * 2)
+    bgColor = `rgba(34, 197, 94, ${0.2 + intensity * 0.4})`
+    textColor = winRatio > 0.6 ? 'text-green-300' : 'text-green-400'
   } else if (lossRatio > winRatio) {
     // More losses - red
-    const intensity = Math.min(0.8, (lossRatio - 0.5) * 2);
-    bgColor = `rgba(239, 68, 68, ${0.2 + intensity * 0.4})`;
-    textColor = lossRatio > 0.6 ? "text-red-300" : "text-red-400";
+    const intensity = Math.min(0.8, (lossRatio - 0.5) * 2)
+    bgColor = `rgba(239, 68, 68, ${0.2 + intensity * 0.4})`
+    textColor = lossRatio > 0.6 ? 'text-red-300' : 'text-red-400'
   } else {
     // Even
-    bgColor = "rgba(100, 116, 139, 0.3)";
-    textColor = "text-slate-300";
+    bgColor = 'rgba(100, 116, 139, 0.3)'
+    textColor = 'text-slate-300'
   }
 
   return (
@@ -227,7 +229,7 @@ function MatrixCell({ record, onHover }: MatrixCellProps) {
     >
       {wins}-{losses}
     </td>
-  );
+  )
 }
 
 // ============================================================
@@ -236,20 +238,20 @@ function MatrixCell({ record, onHover }: MatrixCellProps) {
 
 export interface HeadToHeadComparisonProps {
   modelA: {
-    id: string;
-    displayName: string;
-    color?: string;
-  };
+    id: string
+    displayName: string
+    color?: string
+  }
   modelB: {
-    id: string;
-    displayName: string;
-    color?: string;
-  };
+    id: string
+    displayName: string
+    color?: string
+  }
   record: {
-    modelAWins: number;
-    modelBWins: number;
-    totalGames: number;
-  };
+    modelAWins: number
+    modelBWins: number
+    totalGames: number
+  }
 }
 
 export function HeadToHeadComparison({
@@ -257,19 +259,21 @@ export function HeadToHeadComparison({
   modelB,
   record,
 }: HeadToHeadComparisonProps) {
-  const { modelAWins, modelBWins, totalGames } = record;
+  const { modelAWins, modelBWins, totalGames } = record
 
   if (totalGames === 0) {
     return (
       <div className="text-center py-8">
         <div className="text-4xl mb-4">⚔️</div>
-        <p className="text-slate-400">These models haven't faced each other yet!</p>
+        <p className="text-slate-400">
+          These models haven't faced each other yet!
+        </p>
       </div>
-    );
+    )
   }
 
-  const modelAPercent = (modelAWins / totalGames) * 100;
-  const modelBPercent = (modelBWins / totalGames) * 100;
+  const modelAPercent = (modelAWins / totalGames) * 100
+  const modelBPercent = (modelBWins / totalGames) * 100
 
   return (
     <div className="space-y-6">
@@ -278,7 +282,7 @@ export function HeadToHeadComparison({
         <div className="text-center flex-1">
           <div
             className="text-xl font-bold"
-            style={{ color: modelA.color || "#22c55e" }}
+            style={{ color: modelA.color || '#22c55e' }}
           >
             {modelA.displayName}
           </div>
@@ -291,7 +295,7 @@ export function HeadToHeadComparison({
         <div className="text-center flex-1">
           <div
             className="text-xl font-bold"
-            style={{ color: modelB.color || "#3b82f6" }}
+            style={{ color: modelB.color || '#3b82f6' }}
           >
             {modelB.displayName}
           </div>
@@ -306,14 +310,14 @@ export function HeadToHeadComparison({
           className="absolute inset-y-0 left-0 transition-all"
           style={{
             width: `${modelAPercent}%`,
-            backgroundColor: modelA.color || "#22c55e",
+            backgroundColor: modelA.color || '#22c55e',
           }}
         />
         <div
           className="absolute inset-y-0 right-0 transition-all"
           style={{
             width: `${modelBPercent}%`,
-            backgroundColor: modelB.color || "#3b82f6",
+            backgroundColor: modelB.color || '#3b82f6',
           }}
         />
       </div>
@@ -327,7 +331,7 @@ export function HeadToHeadComparison({
         <div className="bg-slate-700/50 rounded-lg p-4">
           <div
             className="text-2xl font-bold"
-            style={{ color: modelA.color || "#22c55e" }}
+            style={{ color: modelA.color || '#22c55e' }}
           >
             {modelAPercent.toFixed(0)}%
           </div>
@@ -336,7 +340,7 @@ export function HeadToHeadComparison({
         <div className="bg-slate-700/50 rounded-lg p-4">
           <div
             className="text-2xl font-bold"
-            style={{ color: modelB.color || "#3b82f6" }}
+            style={{ color: modelB.color || '#3b82f6' }}
           >
             {modelBPercent.toFixed(0)}%
           </div>
@@ -344,5 +348,5 @@ export function HeadToHeadComparison({
         </div>
       </div>
     </div>
-  );
+  )
 }

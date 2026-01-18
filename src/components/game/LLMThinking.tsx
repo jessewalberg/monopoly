@@ -1,27 +1,27 @@
-import { Card, CardBody } from "../ui/Card";
-import { Badge } from "../ui/Badge";
+import { Card, CardBody } from '../ui/Card'
+import { Badge } from '../ui/Badge'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export type DecisionType =
-  | "buy_property"
-  | "auction_bid"
-  | "jail_strategy"
-  | "pre_roll_actions"
-  | "post_roll_actions"
-  | "trade_response"
-  | "bankruptcy_resolution";
+  | 'buy_property'
+  | 'auction_bid'
+  | 'jail_strategy'
+  | 'pre_roll_actions'
+  | 'post_roll_actions'
+  | 'trade_response'
+  | 'bankruptcy_resolution'
 
 export interface LLMThinkingProps {
-  isThinking: boolean;
-  modelName?: string;
-  modelIcon?: string;
-  decisionType?: DecisionType;
-  action?: string;
-  reasoning?: string;
-  latencyMs?: number;
+  isThinking: boolean
+  modelName?: string
+  modelIcon?: string
+  decisionType?: DecisionType
+  action?: string
+  reasoning?: string
+  latencyMs?: number
 }
 
 // ============================================================
@@ -29,14 +29,14 @@ export interface LLMThinkingProps {
 // ============================================================
 
 const decisionTypeLabels: Record<DecisionType, string> = {
-  buy_property: "Buy Property?",
-  auction_bid: "Auction Bid",
-  jail_strategy: "Jail Strategy",
-  pre_roll_actions: "Pre-Roll Actions",
-  post_roll_actions: "Post-Roll Actions",
-  trade_response: "Trade Response",
-  bankruptcy_resolution: "Bankruptcy Resolution",
-};
+  buy_property: 'Buy Property?',
+  auction_bid: 'Auction Bid',
+  jail_strategy: 'Jail Strategy',
+  pre_roll_actions: 'Pre-Roll Actions',
+  post_roll_actions: 'Post-Roll Actions',
+  trade_response: 'Trade Response',
+  bankruptcy_resolution: 'Bankruptcy Resolution',
+}
 
 // ============================================================
 // SPINNER COMPONENT
@@ -52,7 +52,7 @@ function ThinkingSpinner() {
       </div>
       <span className="text-blue-400 text-sm animate-pulse">Thinking...</span>
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -90,11 +90,11 @@ export function LLMThinking({
           </div>
         </CardBody>
       </Card>
-    );
+    )
   }
 
   if (!action && !reasoning) {
-    return null;
+    return null
   }
 
   return (
@@ -119,25 +119,21 @@ export function LLMThinking({
                 </Badge>
               )}
               {latencyMs !== undefined && (
-                <span className="text-xs text-slate-500">
-                  {latencyMs}ms
-                </span>
+                <span className="text-xs text-slate-500">{latencyMs}ms</span>
               )}
             </div>
 
             {reasoning && (
               <div className="mt-2 p-2 bg-slate-700/50 rounded-lg">
                 <p className="text-xs text-slate-400 mb-1">Reasoning:</p>
-                <p className="text-sm text-slate-300 italic">
-                  "{reasoning}"
-                </p>
+                <p className="text-sm text-slate-300 italic">"{reasoning}"</p>
               </div>
             )}
           </div>
         </div>
       </CardBody>
     </Card>
-  );
+  )
 }
 
 // ============================================================
@@ -146,10 +142,10 @@ export function LLMThinking({
 
 function formatAction(action: string): string {
   return action
-    .replace(/_/g, " ")
-    .split(" ")
+    .replace(/_/g, ' ')
+    .split(' ')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+    .join(' ')
 }
 
 // ============================================================
@@ -161,9 +157,9 @@ export function LLMDecisionInline({
   action,
   reasoning,
 }: {
-  modelName: string;
-  action: string;
-  reasoning?: string;
+  modelName: string
+  action: string
+  reasoning?: string
 }) {
   return (
     <div className="inline-flex items-center gap-2 px-2 py-1 bg-slate-700/50 rounded-lg">
@@ -180,7 +176,7 @@ export function LLMDecisionInline({
         </span>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -188,26 +184,26 @@ export function LLMDecisionInline({
 // ============================================================
 
 export function getModelIcon(modelId: string): string {
-  const provider = modelId.split("/")[0].toLowerCase();
+  const provider = modelId.split('/')[0].toLowerCase()
 
   switch (provider) {
-    case "anthropic":
-      return "🤖";
-    case "openai":
-      return "🧠";
-    case "google":
-      return "🔮";
-    case "meta-llama":
-      return "🦙";
-    case "mistralai":
-      return "🌬️";
-    case "deepseek":
-      return "🔍";
-    case "x-ai":
-      return "✨";
-    case "qwen":
-      return "🐉";
+    case 'anthropic':
+      return '🤖'
+    case 'openai':
+      return '🧠'
+    case 'google':
+      return '🔮'
+    case 'meta-llama':
+      return '🦙'
+    case 'mistralai':
+      return '🌬️'
+    case 'deepseek':
+      return '🔍'
+    case 'x-ai':
+      return '✨'
+    case 'qwen':
+      return '🐉'
     default:
-      return "🤖";
+      return '🤖'
   }
 }

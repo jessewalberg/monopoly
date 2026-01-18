@@ -1,35 +1,35 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "../../../../convex/_generated/api";
-import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { convexQuery } from '@convex-dev/react-query'
+import { api } from '../../../../convex/_generated/api'
+import { Card, CardBody, CardHeader } from '../../../components/ui/Card'
 import {
   StrategyProfileCard,
   StrategySummaryBadges,
-} from "../../../components/analytics";
+} from '../../../components/analytics'
 
 // ============================================================
 // ROUTE DEFINITION
 // ============================================================
 
-export const Route = createFileRoute("/analytics/model/$modelId")({
+export const Route = createFileRoute('/analytics/model/$modelId')({
   component: ModelAnalyticsPage,
-});
+})
 
 // ============================================================
 // MODEL ANALYTICS PAGE
 // ============================================================
 
 function ModelAnalyticsPage() {
-  const { modelId } = Route.useParams();
+  const { modelId } = Route.useParams()
 
   const { data: modelDetail } = useSuspenseQuery(
-    convexQuery(api.analytics.getModelDetail, { modelId })
-  );
+    convexQuery(api.analytics.getModelDetail, { modelId }),
+  )
 
   const { data: strategyProfile } = useSuspenseQuery(
-    convexQuery(api.analytics.getStrategyProfile, { modelId })
-  );
+    convexQuery(api.analytics.getStrategyProfile, { modelId }),
+  )
 
   if (!modelDetail) {
     return (
@@ -45,17 +45,21 @@ function ModelAnalyticsPage() {
             <div className="text-center py-12 text-slate-400">
               <div className="text-4xl mb-3">🤖</div>
               <p>Model not found.</p>
-              <p className="text-sm mt-2">Play some games or check the model ID.</p>
+              <p className="text-sm mt-2">
+                Play some games or check the model ID.
+              </p>
             </div>
           </CardBody>
         </Card>
       </div>
-    );
+    )
   }
 
-  const { stats, recentGames, trends } = modelDetail;
+  const { stats, recentGames, trends } = modelDetail
   const winRate =
-    stats.gamesPlayed > 0 ? Math.round((stats.wins / stats.gamesPlayed) * 100) : 0;
+    stats.gamesPlayed > 0
+      ? Math.round((stats.wins / stats.gamesPlayed) * 100)
+      : 0
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto">
@@ -146,14 +150,8 @@ function ModelAnalyticsPage() {
               label="Avg Game Length"
               value={`${Math.round(stats.avgGameLength)} turns`}
             />
-            <StatPair
-              label="Trades Proposed"
-              value={stats.tradesProposed}
-            />
-            <StatPair
-              label="Trades Accepted"
-              value={stats.tradesAccepted}
-            />
+            <StatPair label="Trades Proposed" value={stats.tradesProposed} />
+            <StatPair label="Trades Accepted" value={stats.tradesAccepted} />
             <StatPair
               label="Trade Accept Rate"
               value={`${Math.round(stats.tradeAcceptRate * 100)}%`}
@@ -202,14 +200,13 @@ function ModelAnalyticsPage() {
                         Game #{game.gameId.slice(-6)}
                       </div>
                       <div className="text-xs text-slate-400">
-                        {game.turnNumber} turns ·{" "}
-                        {game.won ? "Win" : "Loss"}
+                        {game.turnNumber} turns · {game.won ? 'Win' : 'Loss'}
                       </div>
                     </div>
                     <div className="text-right text-xs text-slate-400">
                       {game.finalNetWorth
                         ? formatCurrency(game.finalNetWorth)
-                        : "Net worth N/A"}
+                        : 'Net worth N/A'}
                     </div>
                   </Link>
                 ))}
@@ -219,7 +216,7 @@ function ModelAnalyticsPage() {
         </Card>
       </div>
     </div>
-  );
+  )
 }
 
 // ============================================================
@@ -231,9 +228,9 @@ function StatCard({
   value,
   icon,
 }: {
-  label: string;
-  value: number | string;
-  icon: string;
+  label: string
+  value: number | string
+  icon: string
 }) {
   return (
     <div className="bg-slate-800 rounded-lg p-4">
@@ -245,7 +242,7 @@ function StatCard({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function StatPair({ label, value }: { label: string; value: number | string }) {
@@ -254,9 +251,9 @@ function StatPair({ label, value }: { label: string; value: number | string }) {
       <div className="text-xs text-slate-400">{label}</div>
       <div className="text-sm text-white font-medium">{value}</div>
     </div>
-  );
+  )
 }
 
 function formatCurrency(value: number): string {
-  return `$${Math.round(value).toLocaleString()}`;
+  return `$${Math.round(value).toLocaleString()}`
 }

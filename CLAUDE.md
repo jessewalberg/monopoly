@@ -65,12 +65,14 @@ monopoly-llm/
 ## Key Concepts
 
 ### Convex Patterns
+
 - **Queries**: Read data, auto-subscribe to changes
 - **Mutations**: Write data, transactional
 - **Actions**: External API calls (OpenRouter)
 - **Scheduler**: Auto-advance game turns
 
 ### Game Flow
+
 1. Create game → Add players → Initialize properties
 2. Start game → Schedule turn processing
 3. Each turn: pre_roll → rolling → post_roll → turn_end
@@ -79,6 +81,7 @@ monopoly-llm/
 6. Update analytics stats
 
 ### Real-time Updates
+
 Convex handles all real-time automatically. Frontend queries auto-update when data changes. No manual WebSocket code needed.
 
 ## Commands Reference
@@ -103,8 +106,10 @@ OPENROUTER_API_KEY=      # Get from openrouter.ai
 ## Current Phase
 
 <!-- Update this as you progress -->
+
 Phase: 11 COMPLETE - PROJECT COMPLETE
 Completed:
+
 - Phase 1: Project scaffolding (TanStack Start + Convex)
 - Phase 2: Database schema (10 tables)
 - Phase 3: Game constants (BOARD, cards, models)
@@ -125,7 +130,7 @@ Completed:
   - Setup components: ModelSelector (grouped by provider), PlayerConfigurator (model + color + name), GameSettings (speed/turns/money)
   - All components export via index.ts files
 - Phase 9: Pages & Routes
-  - __root.tsx: Navigation header, Footer, NotFoundPage, RootDocument with providers
+  - \_\_root.tsx: Navigation header, Footer, NotFoundPage, RootDocument with providers
   - index.tsx: Landing page with hero, quick stats, recent games, how it works, feature cards
   - play/index.tsx: Multi-step game setup wizard (Players → Settings → Review)
   - play/$gameId.tsx: Live game view with Board, PlayerPanel sidebar, ActionLog, GameControls
@@ -185,6 +190,7 @@ Working on: Ready for production deployment
 ## Implementation Notes
 
 ### Monopoly Rules Implemented
+
 - Standard 40-space board
 - Properties, railroads, utilities
 - Rent calculation (monopoly doubles, houses, hotels)
@@ -195,6 +201,7 @@ Working on: Ready for production deployment
 - Bankruptcy and asset transfer
 
 ### LLM Decision Points
+
 - buy_property: buy or auction
 - auction_bid: bid amount
 - jail_strategy: pay, roll, or use card
@@ -203,6 +210,7 @@ Working on: Ready for production deployment
 - trade_response: accept, reject, counter
 
 ### Analytics Tracked
+
 - Win rates per model
 - Head-to-head records
 - Property purchase rates
@@ -213,29 +221,33 @@ Working on: Ready for production deployment
 ## Helpful Snippets
 
 ### Convex Query Pattern
+
 ```typescript
 // In component
-const { data } = useQuery(convexQuery(api.games.getFullState, { gameId }));
+const { data } = useQuery(convexQuery(api.games.getFullState, { gameId }))
 ```
 
 ### Convex Mutation Pattern
+
 ```typescript
 const createGame = useMutation({
   mutationFn: useConvexMutation(api.games.create),
-});
+})
 ```
 
 ### OpenRouter Call
+
 ```typescript
 const client = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
+  baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY,
-});
+})
 ```
 
 ### Between Sessions
 
 Keep track of:
+
 1. Which phases are complete
 2. Any bugs or issues found
 3. Any deviations from the plan
@@ -243,6 +255,7 @@ Keep track of:
 ### If Claude Code Gets Stuck
 
 Break down into smaller tasks:
+
 ```
 Let's focus on just the rent calculation function.
 It needs to handle:
@@ -258,7 +271,7 @@ Write this function with tests.
 ### Debugging Tips
 
 ```
-The game is stuck on [X]. 
+The game is stuck on [X].
 Current game state: [paste from Convex dashboard]
 Error message: [if any]
 What's happening and how do we fix it?
@@ -267,6 +280,7 @@ What's happening and how do we fix it?
 ## Known Issues / TODO
 
 <!-- Track issues here -->
+
 - None yet
 
 ## Resources

@@ -1,6 +1,6 @@
-import { v } from "convex/values";
-import { query } from "./_generated/server";
-import type { Doc, Id } from "./_generated/dataModel";
+import { v } from 'convex/values'
+import { query } from './_generated/server'
+import type { Doc, Id } from './_generated/dataModel'
 
 // ============================================================
 // LEADERBOARD
@@ -13,47 +13,47 @@ export const getLeaderboard = query({
   args: {
     sortBy: v.optional(
       v.union(
-        v.literal("wins"),
-        v.literal("winRate"),
-        v.literal("gamesPlayed"),
-        v.literal("avgNetWorth")
-      )
+        v.literal('wins'),
+        v.literal('winRate'),
+        v.literal('gamesPlayed'),
+        v.literal('avgNetWorth'),
+      ),
     ),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const modelStats = await ctx.db.query("modelStats").collect();
+    const modelStats = await ctx.db.query('modelStats').collect()
 
     // Calculate win rate for each model
     const leaderboard = modelStats.map((stat) => ({
       ...stat,
       winRate: stat.gamesPlayed > 0 ? stat.wins / stat.gamesPlayed : 0,
-    }));
+    }))
 
     // Sort based on criteria
-    const sortBy = args.sortBy || "wins";
+    const sortBy = args.sortBy || 'wins'
     leaderboard.sort((a, b) => {
       switch (sortBy) {
-        case "winRate":
-          return b.winRate - a.winRate;
-        case "gamesPlayed":
-          return b.gamesPlayed - a.gamesPlayed;
-        case "avgNetWorth":
-          return b.avgFinalNetWorth - a.avgFinalNetWorth;
-        case "wins":
+        case 'winRate':
+          return b.winRate - a.winRate
+        case 'gamesPlayed':
+          return b.gamesPlayed - a.gamesPlayed
+        case 'avgNetWorth':
+          return b.avgFinalNetWorth - a.avgFinalNetWorth
+        case 'wins':
         default:
-          return b.wins - a.wins;
+          return b.wins - a.wins
       }
-    });
+    })
 
     // Apply limit
     if (args.limit) {
-      return leaderboard.slice(0, args.limit);
+      return leaderboard.slice(0, args.limit)
     }
 
-    return leaderboard;
+    return leaderboard
   },
-});
+})
 
 // ============================================================
 // HEAD-TO-HEAD
@@ -65,55 +65,48 @@ export const getLeaderboard = query({
 export const getHeadToHeadMatrix = query({
   args: {},
   handler: async (ctx) => {
-    const headToHead = await ctx.db.query("headToHead").collect();
+    const headToHead = await ctx.db.query('headToHead').collect()
 
     // Build a map for easy lookup
     const matrix: Record<
       string,
-      Record<
-        string,
-        { wins: number; losses: number; totalGames: number }
-      >
-    > = {};
+      Record<string, { wins: number; losses: number; totalGames: number }> | undefined
+    > = {}
 
     for (const h2h of headToHead) {
       // Initialize if needed
-      if (!matrix[h2h.modelAId]) {
-        matrix[h2h.modelAId] = {};
-      }
-      if (!matrix[h2h.modelBId]) {
-        matrix[h2h.modelBId] = {};
-      }
+      const rowA = (matrix[h2h.modelAId] ??= {})
+      const rowB = (matrix[h2h.modelBId] ??= {})
 
       // Model A's record against Model B
-      matrix[h2h.modelAId][h2h.modelBId] = {
+      rowA[h2h.modelBId] = {
         wins: h2h.modelAWins,
         losses: h2h.modelBWins,
         totalGames: h2h.totalGames,
-      };
+      }
 
       // Model B's record against Model A (inverse)
-      matrix[h2h.modelBId][h2h.modelAId] = {
+      rowB[h2h.modelAId] = {
         wins: h2h.modelBWins,
         losses: h2h.modelAWins,
         totalGames: h2h.totalGames,
-      };
+      }
     }
 
     // Get all model IDs and display names
-    const modelStats = await ctx.db.query("modelStats").collect();
-    const modelDisplayNames: Record<string, string> = {};
+    const modelStats = await ctx.db.query('modelStats').collect()
+    const modelDisplayNames: Record<string, string> = {}
     for (const stat of modelStats) {
-      modelDisplayNames[stat.modelId] = stat.modelDisplayName;
+      modelDisplayNames[stat.modelId] = stat.modelDisplayName
     }
 
     return {
       matrix,
       modelDisplayNames,
       models: Object.keys(matrix),
-    };
+    }
   },
-});
+})
 
 /**
  * Get head-to-head record between two specific models
@@ -125,13 +118,13 @@ export const getHeadToHead = query({
   },
   handler: async (ctx, args) => {
     // Create alphabetically sorted pair key
-    const [first, second] = [args.modelAId, args.modelBId].sort();
-    const pairKey = `${first}|${second}`;
+    const [first, second] = [args.modelAId, args.modelBId].sort()
+    const pairKey = `${first}|${second}`
 
     const h2h = await ctx.db
-      .query("headToHead")
-      .withIndex("by_pair", (q) => q.eq("pairKey", pairKey))
-      .first();
+      .query('headToHead')
+      .withIndex('by_pair', (q) => q.eq('pairKey', pairKey))
+      .first()
 
     if (!h2h) {
       return {
@@ -140,7 +133,7 @@ export const getHeadToHead = query({
         modelBWins: 0,
         modelAId: args.modelAId,
         modelBId: args.modelBId,
-      };
+      }
     }
 
     // Return with correct orientation based on input order
@@ -154,7 +147,7 @@ export const getHeadToHead = query({
         modelBId: h2h.modelBId,
         modelBDisplayName: h2h.modelBDisplayName,
         avgGameLength: h2h.avgGameLength,
-      };
+      }
     } else {
       // Swap A and B to match input order
       return {
@@ -166,10 +159,10 @@ export const getHeadToHead = query({
         modelBId: args.modelBId,
         modelBDisplayName: h2h.modelADisplayName,
         avgGameLength: h2h.avgGameLength,
-      };
+      }
     }
   },
-});
+})
 
 // ============================================================
 // MODEL DETAILS
@@ -185,41 +178,39 @@ export const getModelDetail = query({
   handler: async (ctx, args) => {
     // Get model stats
     const modelStats = await ctx.db
-      .query("modelStats")
-      .withIndex("by_model", (q) => q.eq("modelId", args.modelId))
-      .first();
+      .query('modelStats')
+      .withIndex('by_model', (q) => q.eq('modelId', args.modelId))
+      .first()
 
     if (!modelStats) {
-      return null;
+      return null
     }
 
     // Get recent games where this model played
-    const allPlayers = await ctx.db.query("players").collect();
+    const allPlayers = await ctx.db.query('players').collect()
 
     // Get unique game IDs
-    const gameIds = new Set<Id<"games">>();
-    for (const player of allPlayers.filter(
-      (p) => p.modelId === args.modelId
-    )) {
-      gameIds.add(player.gameId);
+    const gameIds = new Set<Id<'games'>>()
+    for (const player of allPlayers.filter((p) => p.modelId === args.modelId)) {
+      gameIds.add(player.gameId)
     }
 
     // Fetch recent games
     const recentGames: Array<{
-      gameId: Id<"games">;
-      status: string;
-      turnNumber: number;
-      won: boolean;
-      finalPosition?: number;
-      finalNetWorth?: number;
-    }> = [];
+      gameId: Id<'games'>
+      status: string
+      turnNumber: number
+      won: boolean
+      finalPosition?: number
+      finalNetWorth?: number
+    }> = []
 
     for (const gameId of Array.from(gameIds).slice(0, 10)) {
-      const game = await ctx.db.get(gameId);
-      if (game && game.status === "completed") {
+      const game = await ctx.db.get("games", gameId)
+      if (game && game.status === 'completed') {
         const player = allPlayers.find(
-          (p) => p.gameId === gameId && p.modelId === args.modelId
-        );
+          (p) => p.gameId === gameId && p.modelId === args.modelId,
+        )
         if (player) {
           recentGames.push({
             gameId,
@@ -228,17 +219,15 @@ export const getModelDetail = query({
             won: game.winnerId === player._id,
             finalPosition: player.finalPosition,
             finalNetWorth: player.finalNetWorth,
-          });
+          })
         }
       }
     }
 
     // Calculate trends from last 10 games
-    const last10 = recentGames.slice(0, 10);
+    const last10 = recentGames.slice(0, 10)
     const winTrend =
-      last10.length > 0
-        ? last10.filter((g) => g.won).length / last10.length
-        : 0;
+      last10.length > 0 ? last10.filter((g) => g.won).length / last10.length : 0
 
     return {
       stats: modelStats,
@@ -247,9 +236,9 @@ export const getModelDetail = query({
         recentWinRate: winTrend,
         gamesAnalyzed: last10.length,
       },
-    };
+    }
   },
-});
+})
 
 // ============================================================
 // PROPERTY STATS
@@ -262,35 +251,35 @@ export const getPropertyStats = query({
   args: {
     sortBy: v.optional(
       v.union(
-        v.literal("ownerWinRate"),
-        v.literal("timesPurchased"),
-        v.literal("avgRentPerGame"),
-        v.literal("position")
-      )
+        v.literal('ownerWinRate'),
+        v.literal('timesPurchased'),
+        v.literal('avgRentPerGame'),
+        v.literal('position'),
+      ),
     ),
   },
   handler: async (ctx, args) => {
-    const propertyStats = await ctx.db.query("propertyStats").collect();
+    const propertyStats = await ctx.db.query('propertyStats').collect()
 
-    const sortBy = args.sortBy || "ownerWinRate";
+    const sortBy = args.sortBy || 'ownerWinRate'
 
     propertyStats.sort((a, b) => {
       switch (sortBy) {
-        case "timesPurchased":
-          return b.timesPurchased - a.timesPurchased;
-        case "avgRentPerGame":
-          return b.avgRentPerGame - a.avgRentPerGame;
-        case "position":
-          return a.position - b.position;
-        case "ownerWinRate":
+        case 'timesPurchased':
+          return b.timesPurchased - a.timesPurchased
+        case 'avgRentPerGame':
+          return b.avgRentPerGame - a.avgRentPerGame
+        case 'position':
+          return a.position - b.position
+        case 'ownerWinRate':
         default:
-          return b.ownerWinRate - a.ownerWinRate;
+          return b.ownerWinRate - a.ownerWinRate
       }
-    });
+    })
 
-    return propertyStats;
+    return propertyStats
   },
-});
+})
 
 /**
  * Get stats for a specific property group
@@ -300,26 +289,26 @@ export const getPropertyGroupStats = query({
     group: v.string(),
   },
   handler: async (ctx, args) => {
-    const propertyStats = await ctx.db.query("propertyStats").collect();
+    const propertyStats = await ctx.db.query('propertyStats').collect()
 
     const groupStats = propertyStats.filter(
-      (p) => p.propertyGroup === args.group
-    );
+      (p) => p.propertyGroup === args.group,
+    )
 
     // Calculate aggregates
     const totalPurchases = groupStats.reduce(
       (sum, p) => sum + p.timesPurchased,
-      0
-    );
+      0,
+    )
     const avgWinRate =
       groupStats.length > 0
         ? groupStats.reduce((sum, p) => sum + p.ownerWinRate, 0) /
           groupStats.length
-        : 0;
+        : 0
     const totalRentCollected = groupStats.reduce(
       (sum, p) => sum + p.totalRentCollected,
-      0
-    );
+      0,
+    )
 
     return {
       properties: groupStats,
@@ -328,9 +317,9 @@ export const getPropertyGroupStats = query({
         avgWinRate,
         totalRentCollected,
       },
-    };
+    }
   },
-});
+})
 
 // ============================================================
 // RECENT GAMES
@@ -344,30 +333,27 @@ export const getRecentGames = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const limit = args.limit || 20;
+    const limit = args.limit || 20
 
-    const games = await ctx.db
-      .query("games")
-      .order("desc")
-      .collect();
+    const games = await ctx.db.query('games').order('desc').collect()
 
     const completedGames = games
-      .filter((g) => g.status === "completed")
-      .slice(0, limit);
+      .filter((g) => g.status === 'completed')
+      .slice(0, limit)
 
     // Enrich with winner info
     const enrichedGames = await Promise.all(
       completedGames.map(async (game) => {
-        let winner: Doc<"players"> | null = null;
+        let winner: Doc<'players'> | null = null
         if (game.winnerId) {
-          winner = await ctx.db.get(game.winnerId);
+          winner = await ctx.db.get("players", game.winnerId)
         }
 
         // Get all players for this game
         const players = await ctx.db
-          .query("players")
-          .withIndex("by_game", (q) => q.eq("gameId", game._id))
-          .collect();
+          .query('players')
+          .withIndex('by_game', (q) => q.eq('gameId', game._id))
+          .collect()
 
         return {
           ...game,
@@ -386,13 +372,13 @@ export const getRecentGames = query({
             finalPosition: p.finalPosition,
             isBankrupt: p.isBankrupt,
           })),
-        };
-      })
-    );
+        }
+      }),
+    )
 
-    return enrichedGames;
+    return enrichedGames
   },
-});
+})
 
 // ============================================================
 // GLOBAL STATS
@@ -404,69 +390,42 @@ export const getRecentGames = query({
 export const getGlobalStats = query({
   args: {},
   handler: async (ctx) => {
-    // Get all games
-    const games = await ctx.db.query("games").collect();
-    const completedGames = games.filter((g) => g.status === "completed");
-    const inProgressGames = games.filter((g) => g.status === "in_progress");
+    const globalStats = await ctx.db
+      .query('globalStats')
+      .withIndex('by_key', (q) => q.eq('key', 'global'))
+      .first()
 
-    // Get all decisions for total count
-    const decisions = await ctx.db.query("decisions").collect();
-
-    // Calculate average game length
-    const avgGameLength =
-      completedGames.length > 0
-        ? completedGames.reduce((sum, g) => sum + g.currentTurnNumber, 0) /
-          completedGames.length
-        : 0;
-
-    // Calculate average game duration
-    const gamesWithDuration = completedGames.filter(
-      (g) => g.startedAt && g.endedAt
-    );
-    const avgDurationMs =
-      gamesWithDuration.length > 0
-        ? gamesWithDuration.reduce(
-            (sum, g) => sum + ((g.endedAt || 0) - (g.startedAt || 0)),
-            0
-          ) / gamesWithDuration.length
-        : 0;
-
-    // Find most common winning model
-    const modelStats = await ctx.db.query("modelStats").collect();
-    const mostWins = modelStats.reduce(
-      (max, stat) => (stat.wins > max.wins ? stat : max),
-      { wins: 0, modelDisplayName: "None", modelId: "" }
-    );
-
-    // Get total rent payments
-    const rentPayments = await ctx.db.query("rentPayments").collect();
-    const totalRentPaid = rentPayments.reduce((sum, r) => sum + r.amount, 0);
-
-    // Get total trades
-    const trades = await ctx.db.query("trades").collect();
-    const completedTrades = trades.filter((t) => t.status === "accepted");
+    if (!globalStats) {
+      return {
+        totalGames: 0,
+        completedGames: 0,
+        inProgressGames: 0,
+        totalDecisions: 0,
+        totalTrades: 0,
+        acceptedTrades: 0,
+        totalRentPaid: 0,
+        avgGameLength: 0,
+        avgDurationMs: 0,
+        totalModelsPlayed: 0,
+        mostWinningModel: null,
+      }
+    }
 
     return {
-      totalGames: games.length,
-      completedGames: completedGames.length,
-      inProgressGames: inProgressGames.length,
-      totalDecisions: decisions.length,
-      totalTrades: trades.length,
-      acceptedTrades: completedTrades.length,
-      totalRentPaid,
-      avgGameLength: Math.round(avgGameLength),
-      avgDurationMs: Math.round(avgDurationMs),
-      totalModelsPlayed: modelStats.length,
-      mostWinningModel: mostWins.wins > 0
-        ? {
-            modelId: mostWins.modelId,
-            modelDisplayName: mostWins.modelDisplayName,
-            wins: mostWins.wins,
-          }
-        : null,
-    };
+      totalGames: globalStats.totalGames,
+      completedGames: globalStats.completedGames,
+      inProgressGames: globalStats.inProgressGames,
+      totalDecisions: globalStats.totalDecisions,
+      totalTrades: globalStats.totalTrades,
+      acceptedTrades: globalStats.acceptedTrades,
+      totalRentPaid: globalStats.totalRentPaid,
+      avgGameLength: Math.round(globalStats.avgGameLength),
+      avgDurationMs: Math.round(globalStats.avgDurationMs),
+      totalModelsPlayed: globalStats.totalModelsPlayed,
+      mostWinningModel: globalStats.mostWinningModel ?? null,
+    }
   },
-});
+})
 
 // ============================================================
 // STRATEGY PROFILES
@@ -481,20 +440,20 @@ export const getStrategyProfile = query({
   },
   handler: async (ctx, args) => {
     // Get all players for this model
-    const allPlayers = await ctx.db.query("players").collect();
-    const modelPlayers = allPlayers.filter((p) => p.modelId === args.modelId);
+    const allPlayers = await ctx.db.query('players').collect()
+    const modelPlayers = allPlayers.filter((p) => p.modelId === args.modelId)
 
     if (modelPlayers.length === 0) {
-      return null;
+      return null
     }
 
-    const playerIds = modelPlayers.map((p) => p._id);
+    const playerIds = modelPlayers.map((p) => p._id)
 
     // Get all decisions for these players
-    const allDecisions = await ctx.db.query("decisions").collect();
+    const allDecisions = await ctx.db.query('decisions').collect()
     const modelDecisions = allDecisions.filter((d) =>
-      playerIds.includes(d.playerId)
-    );
+      playerIds.includes(d.playerId),
+    )
 
     if (modelDecisions.length === 0) {
       return {
@@ -503,70 +462,69 @@ export const getStrategyProfile = query({
         tradeFrequency: 0,
         buildSpeed: 0,
         riskTolerance: 0.5,
-        jailStrategy: "unknown",
+        jailStrategy: 'unknown',
         decisionsAnalyzed: 0,
-      };
+      }
     }
 
     // Calculate buy rate (purchases / opportunities)
     const buyDecisions = modelDecisions.filter(
-      (d) => d.decisionType === "buy_property"
-    );
-    const buyCount = buyDecisions.filter((d) => d.decisionMade === "buy").length;
-    const buyRate =
-      buyDecisions.length > 0 ? buyCount / buyDecisions.length : 0;
+      (d) => d.decisionType === 'buy_property',
+    )
+    const buyCount = buyDecisions.filter((d) => d.decisionMade === 'buy').length
+    const buyRate = buyDecisions.length > 0 ? buyCount / buyDecisions.length : 0
 
-    // Calculate trade frequency (trades proposed / games played)
+    // Calculate trade frequency (trades proposed / action decisions)
     const tradeDecisions = modelDecisions.filter(
       (d) =>
-        d.decisionType === "pre_roll_actions" ||
-        d.decisionType === "post_roll_actions"
-    );
+        d.decisionType === 'pre_roll_actions' ||
+        d.decisionType === 'post_roll_actions',
+    )
     const tradeProposals = tradeDecisions.filter((d) =>
-      d.decisionMade.includes("trade")
-    ).length;
-    const gamesPlayed = modelPlayers.length;
-    const tradeFrequency = gamesPlayed > 0 ? tradeProposals / gamesPlayed : 0;
+      d.decisionMade.includes('trade'),
+    ).length
+    const tradeFrequency =
+      tradeDecisions.length > 0 ? tradeProposals / tradeDecisions.length : 0
 
     // Calculate build speed (build decisions / turns with opportunity)
     const buildDecisions = tradeDecisions.filter((d) =>
-      d.decisionMade.includes("build")
-    ).length;
-    const buildOpportunities = tradeDecisions.length;
+      d.decisionMade.includes('build'),
+    ).length
+    const buildOpportunities = tradeDecisions.length
     const buildSpeed =
-      buildOpportunities > 0 ? buildDecisions / buildOpportunities : 0;
+      buildOpportunities > 0 ? buildDecisions / buildOpportunities : 0
 
     // Calculate risk tolerance based on cash reserves
     // Higher values mean more willing to spend down to low cash
     // This is approximated from buy decisions vs available cash
-    let riskTolerance = 0.5; // Default medium risk
+    let riskTolerance = 0.5 // Default medium risk
     if (buyDecisions.length > 0) {
       // If they buy a lot when they can, they're more aggressive
-      riskTolerance = buyRate;
+      riskTolerance = buyRate
     }
 
     // Determine jail strategy preference
     const jailDecisions = modelDecisions.filter(
-      (d) => d.decisionType === "jail_strategy"
-    );
-    let jailStrategy = "unknown";
+      (d) => d.decisionType === 'jail_strategy',
+    )
+    let jailStrategy = 'unknown'
     if (jailDecisions.length > 0) {
-      const payCount = jailDecisions.filter((d) =>
-        d.decisionMade === "pay"
-      ).length;
-      const rollCount = jailDecisions.filter((d) =>
-        d.decisionMade === "roll"
-      ).length;
-      const cardCount = jailDecisions.filter((d) =>
-        d.decisionMade === "use_card"
-      ).length;
+      const payCount = jailDecisions.filter(
+        (d) => d.decisionMade === 'pay',
+      ).length
+      const rollCount = jailDecisions.filter(
+        (d) => d.decisionMade === 'roll',
+      ).length
+      const cardCount = jailDecisions.filter(
+        (d) => d.decisionMade === 'use_card',
+      ).length
 
       if (payCount >= rollCount && payCount >= cardCount) {
-        jailStrategy = "pay";
+        jailStrategy = 'pay'
       } else if (rollCount >= cardCount) {
-        jailStrategy = "roll";
+        jailStrategy = 'roll'
       } else {
-        jailStrategy = "use_card";
+        jailStrategy = 'use_card'
       }
     }
 
@@ -578,9 +536,9 @@ export const getStrategyProfile = query({
       riskTolerance: Math.round(riskTolerance * 100) / 100,
       jailStrategy,
       decisionsAnalyzed: modelDecisions.length,
-    };
+    }
   },
-});
+})
 
 /**
  * Get strategy profiles for multiple models (for comparison)
@@ -591,65 +549,72 @@ export const getStrategyProfiles = query({
   },
   handler: async (ctx, args) => {
     // Get all players
-    const allPlayers = await ctx.db.query("players").collect();
+    const allPlayers = await ctx.db.query('players').collect()
 
     // Get all decisions
-    const allDecisions = await ctx.db.query("decisions").collect();
+    const allDecisions = await ctx.db.query('decisions').collect()
 
     const profiles: Array<{
-      modelId: string;
-      modelDisplayName: string;
-      buyRate: number;
-      tradeFrequency: number;
-      buildSpeed: number;
-      riskTolerance: number;
-      jailStrategy: string;
-    }> = [];
+      modelId: string
+      modelDisplayName: string
+      buyRate: number
+      tradeFrequency: number
+      buildSpeed: number
+      riskTolerance: number
+      jailStrategy: string
+    }> = []
 
     for (const modelId of args.modelIds) {
-      const modelPlayers = allPlayers.filter((p) => p.modelId === modelId);
-      if (modelPlayers.length === 0) continue;
+      const modelPlayers = allPlayers.filter((p) => p.modelId === modelId)
+      if (modelPlayers.length === 0) continue
 
-      const playerIds = modelPlayers.map((p) => p._id);
+      const playerIds = modelPlayers.map((p) => p._id)
       const modelDecisions = allDecisions.filter((d) =>
-        playerIds.includes(d.playerId)
-      );
+        playerIds.includes(d.playerId),
+      )
 
       // Calculate metrics (same logic as getStrategyProfile)
       const buyDecisions = modelDecisions.filter(
-        (d) => d.decisionType === "buy_property"
-      );
-      const buyCount = buyDecisions.filter((d) => d.decisionMade === "buy").length;
-      const buyRate = buyDecisions.length > 0 ? buyCount / buyDecisions.length : 0;
+        (d) => d.decisionType === 'buy_property',
+      )
+      const buyCount = buyDecisions.filter(
+        (d) => d.decisionMade === 'buy',
+      ).length
+      const buyRate =
+        buyDecisions.length > 0 ? buyCount / buyDecisions.length : 0
 
       const actionDecisions = modelDecisions.filter(
         (d) =>
-          d.decisionType === "pre_roll_actions" ||
-          d.decisionType === "post_roll_actions"
-      );
+          d.decisionType === 'pre_roll_actions' ||
+          d.decisionType === 'post_roll_actions',
+      )
       const tradeProposals = actionDecisions.filter((d) =>
-        d.decisionMade.includes("trade")
-      ).length;
+        d.decisionMade.includes('trade'),
+      ).length
       const tradeFrequency =
-        modelPlayers.length > 0 ? tradeProposals / modelPlayers.length : 0;
+        actionDecisions.length > 0 ? tradeProposals / actionDecisions.length : 0
 
       const buildDecisions = actionDecisions.filter((d) =>
-        d.decisionMade.includes("build")
-      ).length;
+        d.decisionMade.includes('build'),
+      ).length
       const buildSpeed =
-        actionDecisions.length > 0 ? buildDecisions / actionDecisions.length : 0;
+        actionDecisions.length > 0 ? buildDecisions / actionDecisions.length : 0
 
       const jailDecisions = modelDecisions.filter(
-        (d) => d.decisionType === "jail_strategy"
-      );
-      let jailStrategy = "unknown";
+        (d) => d.decisionType === 'jail_strategy',
+      )
+      let jailStrategy = 'unknown'
       if (jailDecisions.length > 0) {
-        const payCount = jailDecisions.filter((d) => d.decisionMade === "pay").length;
-        const rollCount = jailDecisions.filter((d) => d.decisionMade === "roll").length;
+        const payCount = jailDecisions.filter(
+          (d) => d.decisionMade === 'pay',
+        ).length
+        const rollCount = jailDecisions.filter(
+          (d) => d.decisionMade === 'roll',
+        ).length
         if (payCount >= rollCount) {
-          jailStrategy = "pay";
+          jailStrategy = 'pay'
         } else {
-          jailStrategy = "roll";
+          jailStrategy = 'roll'
         }
       }
 
@@ -661,12 +626,12 @@ export const getStrategyProfiles = query({
         buildSpeed: Math.round(buildSpeed * 100) / 100,
         riskTolerance: Math.round(buyRate * 100) / 100, // Use buy rate as proxy
         jailStrategy,
-      });
+      })
     }
 
-    return profiles;
+    return profiles
   },
-});
+})
 
 // ============================================================
 // WIN RATE TRENDS
@@ -680,53 +645,47 @@ export const getWinRateTrends = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const limit = args.limit || 50;
+    const limit = args.limit || 50
 
     // Get completed games in chronological order
-    const games = await ctx.db
-      .query("games")
-      .order("asc")
-      .collect();
+    const games = await ctx.db.query('games').order('asc').collect()
 
     const completedGames = games
-      .filter((g) => g.status === "completed" && g.winnerId)
-      .slice(-limit);
+      .filter((g) => g.status === 'completed' && g.winnerId)
+      .slice(-limit)
 
     // Track cumulative wins by model
     const cumulativeWins: Record<
       string,
-      Array<{ gameNumber: number; cumulativeWins: number; modelName: string }>
-    > = {};
+      Array<{ gameNumber: number; cumulativeWins: number; modelName: string }> | undefined
+    > = {}
 
-    let gameNumber = 1;
+    let gameNumber = 1
     for (const game of completedGames) {
       if (game.winnerId) {
-        const winner = await ctx.db.get(game.winnerId);
+        const winner = await ctx.db.get("players", game.winnerId)
         if (winner) {
-          const modelId = winner.modelId;
-          if (!cumulativeWins[modelId]) {
-            cumulativeWins[modelId] = [];
-          }
+          const modelId = winner.modelId
+          const winsForModel = (cumulativeWins[modelId] ??= [])
 
           const prevWins =
-            cumulativeWins[modelId].length > 0
-              ? cumulativeWins[modelId][cumulativeWins[modelId].length - 1]
-                  .cumulativeWins
-              : 0;
+            winsForModel.length > 0
+              ? winsForModel[winsForModel.length - 1].cumulativeWins
+              : 0
 
-          cumulativeWins[modelId].push({
+          winsForModel.push({
             gameNumber,
             cumulativeWins: prevWins + 1,
             modelName: winner.modelDisplayName,
-          });
+          })
         }
       }
-      gameNumber++;
+      gameNumber++
     }
 
     return {
       trends: cumulativeWins,
       totalGames: completedGames.length,
-    };
+    }
   },
-});
+})

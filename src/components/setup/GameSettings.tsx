@@ -1,20 +1,20 @@
-import { Card, CardHeader, CardBody } from "../ui/Card";
-import { DEFAULT_GAME_CONFIG } from "../../lib/models";
+import { Card, CardBody, CardHeader } from '../ui/Card'
+import { DEFAULT_GAME_CONFIG } from '../../lib/models'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface GameSettingsConfig {
-  speedMs: number;
-  turnLimit?: number;
-  startingMoney: number;
+  speedMs: number
+  turnLimit?: number
+  startingMoney: number
 }
 
 export interface GameSettingsProps {
-  config: GameSettingsConfig;
-  onChange: (config: GameSettingsConfig) => void;
-  showAdvanced?: boolean;
+  config: GameSettingsConfig
+  onChange: (config: GameSettingsConfig) => void
+  showAdvanced?: boolean
 }
 
 // ============================================================
@@ -22,34 +22,34 @@ export interface GameSettingsProps {
 // ============================================================
 
 const SPEED_OPTIONS = [
-  { label: "Slow (4s)", value: 4000 },
-  { label: "Normal (2s)", value: 2000 },
-  { label: "Fast (1s)", value: 1000 },
-  { label: "Very Fast (0.5s)", value: 500 },
-];
+  { label: 'Slow (4s)', value: 4000 },
+  { label: 'Normal (2s)', value: 2000 },
+  { label: 'Fast (1s)', value: 1000 },
+  { label: 'Very Fast (0.5s)', value: 500 },
+]
 
 // ============================================================
 // TURN LIMIT OPTIONS
 // ============================================================
 
 const TURN_LIMIT_OPTIONS = [
-  { label: "No Limit", value: undefined },
-  { label: "50 turns", value: 50 },
-  { label: "100 turns", value: 100 },
-  { label: "200 turns", value: 200 },
-  { label: "500 turns", value: 500 },
-];
+  { label: 'No Limit', value: undefined },
+  { label: '50 turns', value: 50 },
+  { label: '100 turns', value: 100 },
+  { label: '200 turns', value: 200 },
+  { label: '500 turns', value: 500 },
+]
 
 // ============================================================
 // STARTING MONEY OPTIONS
 // ============================================================
 
 const STARTING_MONEY_OPTIONS = [
-  { label: "$1,000", value: 1000 },
-  { label: "$1,500 (Standard)", value: 1500 },
-  { label: "$2,000", value: 2000 },
-  { label: "$3,000", value: 3000 },
-];
+  { label: '$1,000', value: 1000 },
+  { label: '$1,500 (Standard)', value: 1500 },
+  { label: '$2,000', value: 2000 },
+  { label: '$3,000', value: 3000 },
+]
 
 // ============================================================
 // GAME SETTINGS COMPONENT
@@ -61,16 +61,16 @@ export function GameSettings({
   showAdvanced = false,
 }: GameSettingsProps) {
   const handleSpeedChange = (speedMs: number) => {
-    onChange({ ...config, speedMs });
-  };
+    onChange({ ...config, speedMs })
+  }
 
   const handleTurnLimitChange = (turnLimit: number | undefined) => {
-    onChange({ ...config, turnLimit });
-  };
+    onChange({ ...config, turnLimit })
+  }
 
   const handleStartingMoneyChange = (startingMoney: number) => {
-    onChange({ ...config, startingMoney });
-  };
+    onChange({ ...config, startingMoney })
+  }
 
   return (
     <Card>
@@ -83,9 +83,7 @@ export function GameSettings({
           <label className="text-sm font-medium text-slate-300">
             Game Speed
           </label>
-          <p className="text-xs text-slate-500">
-            Time between each turn step
-          </p>
+          <p className="text-xs text-slate-500">Time between each turn step</p>
           <div className="grid grid-cols-2 gap-2">
             {SPEED_OPTIONS.map((option) => (
               <button
@@ -95,8 +93,8 @@ export function GameSettings({
                   py-2 px-3 rounded-lg text-sm font-medium transition-all
                   ${
                     config.speedMs === option.value
-                      ? "bg-green-600 text-white"
-                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                      ? 'bg-green-600 text-white'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                   }
                 `}
               >
@@ -123,8 +121,8 @@ export function GameSettings({
                   py-2 px-3 rounded-lg text-sm font-medium transition-all
                   ${
                     config.turnLimit === option.value
-                      ? "bg-green-600 text-white"
-                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                      ? 'bg-green-600 text-white'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                   }
                 `}
               >
@@ -155,8 +153,8 @@ export function GameSettings({
                       py-2 px-3 rounded-lg text-sm font-medium transition-all
                       ${
                         config.startingMoney === option.value
-                          ? "bg-green-600 text-white"
-                          : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                          ? 'bg-green-600 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       }
                     `}
                   >
@@ -169,7 +167,7 @@ export function GameSettings({
         )}
       </CardBody>
     </Card>
-  );
+  )
 }
 
 // ============================================================
@@ -181,18 +179,22 @@ export function getDefaultGameSettings(): GameSettingsConfig {
     speedMs: DEFAULT_GAME_CONFIG.speedMs,
     turnLimit: DEFAULT_GAME_CONFIG.turnLimit,
     startingMoney: DEFAULT_GAME_CONFIG.startingMoney,
-  };
+  }
 }
 
 // ============================================================
 // COMPACT SETTINGS PREVIEW
 // ============================================================
 
-export function GameSettingsPreview({ config }: { config: GameSettingsConfig }) {
-  const speedOption = SPEED_OPTIONS.find((o) => o.value === config.speedMs);
+export function GameSettingsPreview({
+  config,
+}: {
+  config: GameSettingsConfig
+}) {
+  const speedOption = SPEED_OPTIONS.find((o) => o.value === config.speedMs)
   const turnLimitOption = TURN_LIMIT_OPTIONS.find(
-    (o) => o.value === config.turnLimit
-  );
+    (o) => o.value === config.turnLimit,
+  )
 
   return (
     <div className="flex flex-wrap gap-2 text-sm">
@@ -200,11 +202,11 @@ export function GameSettingsPreview({ config }: { config: GameSettingsConfig }) 
         Speed: {speedOption?.label || `${config.speedMs}ms`}
       </span>
       <span className="px-2 py-1 bg-slate-700 rounded text-slate-300">
-        Turns: {turnLimitOption?.label || "No Limit"}
+        Turns: {turnLimitOption?.label || 'No Limit'}
       </span>
       <span className="px-2 py-1 bg-slate-700 rounded text-slate-300">
         Starting: ${config.startingMoney.toLocaleString()}
       </span>
     </div>
-  );
+  )
 }

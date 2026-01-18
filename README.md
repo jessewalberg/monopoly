@@ -22,14 +22,14 @@ LLM Monopoly Arena is a full-stack web application that pits different AI langua
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 19, TanStack Start (SSR), TanStack Router, TanStack Query |
-| Backend | Convex (serverless functions, real-time database, scheduling) |
-| LLM Gateway | OpenRouter (unified API for multiple providers) |
-| Styling | Tailwind CSS v4 |
-| Charts | Recharts |
-| Package Manager | pnpm |
+| Layer           | Technology                                                      |
+| --------------- | --------------------------------------------------------------- |
+| Frontend        | React 19, TanStack Start (SSR), TanStack Router, TanStack Query |
+| Backend         | Convex (serverless functions, real-time database, scheduling)   |
+| LLM Gateway     | OpenRouter (unified API for multiple providers)                 |
+| Styling         | Tailwind CSS v4                                                 |
+| Charts          | Recharts                                                        |
+| Package Manager | pnpm                                                            |
 
 ## Architecture
 
@@ -76,13 +76,13 @@ For detailed architecture diagrams (Mermaid), see [ARCHITECTURE.md](./ARCHITECTU
 
 The arena uses these cost-efficient models:
 
-| Model | Provider | ID |
-|-------|----------|-----|
-| GPT-4o Mini | OpenAI | `openai/gpt-4o-mini` |
-| Gemini 2.0 Flash | Google | `google/gemini-2.0-flash-001` |
-| Gemini 2.5 Flash Lite | Google | `google/gemini-2.5-flash-lite` |
-| Claude 3.5 Haiku | Anthropic | `anthropic/claude-3.5-haiku` |
-| Grok 3 Mini | xAI | `x-ai/grok-3-mini` |
+| Model                 | Provider  | ID                             |
+| --------------------- | --------- | ------------------------------ |
+| GPT-4o Mini           | OpenAI    | `openai/gpt-4o-mini`           |
+| Gemini 2.0 Flash      | Google    | `google/gemini-2.0-flash-001`  |
+| Gemini 2.5 Flash Lite | Google    | `google/gemini-2.5-flash-lite` |
+| Claude 3.5 Haiku      | Anthropic | `anthropic/claude-3.5-haiku`   |
+| Grok 3 Mini           | xAI       | `x-ai/grok-3-mini`             |
 
 ## Getting Started
 
@@ -96,30 +96,36 @@ The arena uses these cost-efficient models:
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/yourusername/monopoly-llm.git
    cd monopoly-llm
    ```
 
 2. **Install dependencies**
+
    ```bash
    pnpm install
    ```
 
 3. **Set up Convex**
+
    ```bash
    npx convex dev
    ```
+
    This will prompt you to log in and create a new project.
 
 4. **Configure environment variables**
 
    Set your OpenRouter API key in Convex:
+
    ```bash
    npx convex env set OPENROUTER_API_KEY your_key_here
    ```
 
 5. **Start development server**
+
    ```bash
    pnpm run dev
    ```
@@ -193,18 +199,19 @@ monopoly-llm/
 
 ### Decision Types
 
-| Type | When | Options |
-|------|------|---------|
-| `buy_property` | Land on unowned property | Buy, Auction |
-| `auction_bid` | Property goes to auction | Bid amount |
-| `jail_strategy` | Start turn in jail | Pay, Roll, Use card |
-| `pre_roll_actions` | Before rolling | Build, Mortgage, Trade, Done |
-| `post_roll_actions` | After landing | Build, Mortgage, Done |
-| `trade_response` | Receive trade offer | Accept, Reject, Counter |
+| Type                | When                     | Options                      |
+| ------------------- | ------------------------ | ---------------------------- |
+| `buy_property`      | Land on unowned property | Buy, Auction                 |
+| `auction_bid`       | Property goes to auction | Bid amount                   |
+| `jail_strategy`     | Start turn in jail       | Pay, Roll, Use card          |
+| `pre_roll_actions`  | Before rolling           | Build, Mortgage, Trade, Done |
+| `post_roll_actions` | After landing            | Build, Mortgage, Done        |
+| `trade_response`    | Receive trade offer      | Accept, Reject, Counter      |
 
 ## API Security
 
 All game-modifying mutations are `internalMutation`, meaning:
+
 - They can only be called by other Convex functions
 - The frontend cannot directly create or modify games
 - Games are created only by the hourly cron job
@@ -223,69 +230,76 @@ The platform tracks:
 
 ## Available Scripts
 
-| Command | Description |
-|---------|-------------|
-| `pnpm run dev` | Start development server with Convex |
-| `pnpm run build` | Build for production |
-| `pnpm run test` | Run unit tests |
-| `pnpm run test:watch` | Run tests in watch mode |
-| `npx convex dev` | Start Convex dev mode only |
-| `npx convex deploy` | Deploy Convex to production |
-| `npx convex dashboard` | Open Convex dashboard |
+| Command                | Description                          |
+| ---------------------- | ------------------------------------ |
+| `pnpm run dev`         | Start development server with Convex |
+| `pnpm run build`       | Build for production                 |
+| `pnpm run test`        | Run unit tests                       |
+| `pnpm run test:watch`  | Run tests in watch mode              |
+| `npx convex dev`       | Start Convex dev mode only           |
+| `npx convex deploy`    | Deploy Convex to production          |
+| `npx convex dashboard` | Open Convex dashboard                |
 
 ### Environment Variables
 
-| Variable | Where | Description |
-|----------|-------|-------------|
-| `OPENROUTER_API_KEY` | Convex Dashboard | API key for OpenRouter |
-| `CONVEX_URL` | Cloudflare Pages | Convex deployment URL (from dashboard) |
+| Variable             | Where            | Description                            |
+| -------------------- | ---------------- | -------------------------------------- |
+| `OPENROUTER_API_KEY` | Convex Dashboard | API key for OpenRouter                 |
+| `CONVEX_URL`         | Cloudflare Pages | Convex deployment URL (from dashboard) |
 
 ## Monopoly Rules Implementation
 
 ### Properties
+
 - 28 purchasable properties (22 streets, 4 railroads, 2 utilities)
 - 8 color groups for streets
 - Monopoly = owning all properties in a group
 
 ### Rent
+
 - **Streets**: Base rent, 2x with monopoly, multipliers with houses (3x, 6x, 12x, 16x, 25x for hotel)
 - **Railroads**: $25 × 2^(owned-1) ($25, $50, $100, $200)
 - **Utilities**: 4x dice (one owned) or 10x dice (both owned)
 - **Mortgaged**: No rent collected
 
 ### Building
+
 - Can only build on complete monopolies
 - Must build evenly (max 1 house difference)
 - Houses: 1-4, then upgrade to hotel
 
 ### Jail
+
 - Go To Jail space or 3 consecutive doubles
 - Exit by: paying $50, rolling doubles, or using card
 - Maximum 3 turns, then must pay
 
 ### Bankruptcy
+
 - Can't pay debt: liquidate assets
 - Remaining assets go to creditor (or bank)
 - Last player standing wins
 
 ## Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| `Space` | Pause/Resume game |
-| `+` | Speed up game |
-| `-` | Slow down game |
-| `L` | Toggle game log |
-| `?` | Show shortcuts help |
+| Key     | Action              |
+| ------- | ------------------- |
+| `Space` | Pause/Resume game   |
+| `+`     | Speed up game       |
+| `-`     | Slow down game      |
+| `L`     | Toggle game log     |
+| `?`     | Show shortcuts help |
 
 ## Testing
 
 Run the test suite:
+
 ```bash
 pnpm run test
 ```
 
 Tests cover:
+
 - Rent calculation (properties, railroads, utilities)
 - Monopoly detection
 - Even building rule validation

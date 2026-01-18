@@ -1,29 +1,29 @@
-import { useState } from "react";
-import { Card, CardBody } from "../ui/Card";
-import { Button } from "../ui/Button";
-import { ModelSelector } from "./ModelSelector";
-import { TokenColorPreview } from "../game/PlayerToken";
-import { TOKEN_COLORS, getModelById } from "../../lib/models";
+import { useState } from 'react'
+import { Card, CardBody } from '../ui/Card'
+import { Button } from '../ui/Button'
+import { TokenColorPreview } from '../game/PlayerToken'
+import { TOKEN_COLORS, getModelById } from '../../lib/models'
+import { ModelSelector } from './ModelSelector'
 
 // ============================================================
 // TYPES
 // ============================================================
 
 export interface PlayerConfig {
-  id: string; // Temporary ID for the form
-  modelId: string;
-  displayName: string;
-  tokenColorIndex: number;
+  id: string // Temporary ID for the form
+  modelId: string
+  displayName: string
+  tokenColorIndex: number
 }
 
 export interface PlayerConfiguratorProps {
-  player: PlayerConfig;
-  onChange: (player: PlayerConfig) => void;
-  onRemove?: () => void;
-  usedColorIndices: number[];
-  usedModelIds: string[];
-  canRemove?: boolean;
-  playerNumber: number;
+  player: PlayerConfig
+  onChange: (player: PlayerConfig) => void
+  onRemove?: () => void
+  usedColorIndices: Array<number>
+  usedModelIds: Array<string>
+  canRemove?: boolean
+  playerNumber: number
 }
 
 // ============================================================
@@ -39,37 +39,39 @@ export function PlayerConfigurator({
   canRemove = true,
   playerNumber,
 }: PlayerConfiguratorProps) {
-  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false)
 
-  const selectedColor = TOKEN_COLORS[player.tokenColorIndex];
+  const selectedColor = TOKEN_COLORS[player.tokenColorIndex]
 
   // Handle model change - auto-generate display name
   const handleModelChange = (modelId: string) => {
-    const model = getModelById(modelId);
-    const displayName = model ? model.name : modelId.split("/").pop() || "Player";
+    const model = getModelById(modelId)
+    const displayName = model
+      ? model.name
+      : modelId.split('/').pop() || 'Player'
 
     onChange({
       ...player,
       modelId,
       displayName,
-    });
-  };
+    })
+  }
 
   // Handle color change
   const handleColorChange = (colorIndex: number) => {
     onChange({
       ...player,
       tokenColorIndex: colorIndex,
-    });
-  };
+    })
+  }
 
   // Handle name change
   const handleNameChange = (name: string) => {
     onChange({
       ...player,
       displayName: name,
-    });
-  };
+    })
+  }
 
   return (
     <Card className="relative">
@@ -116,7 +118,7 @@ export function PlayerConfigurator({
               value={player.displayName}
               onChange={(e) => handleNameChange(e.target.value)}
               onBlur={() => setIsEditingName(false)}
-              onKeyDown={(e) => e.key === "Enter" && setIsEditingName(false)}
+              onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
               className="w-full px-3 py-2 bg-slate-700 text-white border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
               autoFocus
             />
@@ -125,7 +127,7 @@ export function PlayerConfigurator({
               onClick={() => setIsEditingName(true)}
               className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg text-left hover:bg-slate-600 transition-colors"
             >
-              {player.displayName || "Click to edit"}
+              {player.displayName || 'Click to edit'}
             </button>
           )}
         </div>
@@ -138,13 +140,13 @@ export function PlayerConfigurator({
           <div className="flex flex-wrap gap-2">
             {TOKEN_COLORS.map((color, idx) => {
               const isUsed =
-                usedColorIndices.includes(idx) && idx !== player.tokenColorIndex;
+                usedColorIndices.includes(idx) && idx !== player.tokenColorIndex
               return (
                 <button
                   key={color.name}
                   onClick={() => !isUsed && handleColorChange(idx)}
                   disabled={isUsed}
-                  className={isUsed ? "opacity-30 cursor-not-allowed" : ""}
+                  className={isUsed ? 'opacity-30 cursor-not-allowed' : ''}
                   title={isUsed ? `Used by another player` : color.name}
                 >
                   <TokenColorPreview
@@ -153,13 +155,13 @@ export function PlayerConfigurator({
                     selected={idx === player.tokenColorIndex}
                   />
                 </button>
-              );
+              )
             })}
           </div>
         </div>
       </CardBody>
     </Card>
-  );
+  )
 }
 
 // ============================================================
@@ -172,46 +174,46 @@ export function PlayersListConfigurator({
   minPlayers = 2,
   maxPlayers = 8,
 }: {
-  players: PlayerConfig[];
-  onChange: (players: PlayerConfig[]) => void;
-  minPlayers?: number;
-  maxPlayers?: number;
+  players: Array<PlayerConfig>
+  onChange: (players: Array<PlayerConfig>) => void
+  minPlayers?: number
+  maxPlayers?: number
 }) {
   // Get used colors and models
-  const usedColorIndices = players.map((p) => p.tokenColorIndex);
-  const usedModelIds = players.map((p) => p.modelId);
+  const usedColorIndices = players.map((p) => p.tokenColorIndex)
+  const usedModelIds = players.map((p) => p.modelId)
 
   // Add player
   const handleAddPlayer = () => {
-    if (players.length >= maxPlayers) return;
+    if (players.length >= maxPlayers) return
 
     // Find next available color
     const nextColorIndex = TOKEN_COLORS.findIndex(
-      (_, idx) => !usedColorIndices.includes(idx)
-    );
+      (_, idx) => !usedColorIndices.includes(idx),
+    )
 
     const newPlayer: PlayerConfig = {
       id: `player-${Date.now()}`,
-      modelId: "",
-      displayName: "",
+      modelId: '',
+      displayName: '',
       tokenColorIndex: nextColorIndex >= 0 ? nextColorIndex : 0,
-    };
+    }
 
-    onChange([...players, newPlayer]);
-  };
+    onChange([...players, newPlayer])
+  }
 
   // Remove player
   const handleRemovePlayer = (index: number) => {
-    if (players.length <= minPlayers) return;
-    onChange(players.filter((_, i) => i !== index));
-  };
+    if (players.length <= minPlayers) return
+    onChange(players.filter((_, i) => i !== index))
+  }
 
   // Update player
   const handleUpdatePlayer = (index: number, updated: PlayerConfig) => {
-    const newPlayers = [...players];
-    newPlayers[index] = updated;
-    onChange(newPlayers);
-  };
+    const newPlayers = [...players]
+    newPlayers[index] = updated
+    onChange(newPlayers)
+  }
 
   return (
     <div className="space-y-4">
@@ -238,18 +240,18 @@ export function PlayersListConfigurator({
         </Button>
       )}
     </div>
-  );
+  )
 }
 
 // ============================================================
 // HELPER: Generate initial players
 // ============================================================
 
-export function generateInitialPlayers(count: number = 2): PlayerConfig[] {
+export function generateInitialPlayers(count: number = 2): Array<PlayerConfig> {
   return Array.from({ length: count }, (_, i) => ({
     id: `player-${i}`,
-    modelId: "",
-    displayName: "",
+    modelId: '',
+    displayName: '',
     tokenColorIndex: i,
-  }));
+  }))
 }

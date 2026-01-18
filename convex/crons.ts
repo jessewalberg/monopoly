@@ -1,13 +1,13 @@
-import { cronJobs } from "convex/server";
-import { internal } from "./_generated/api";
+import { cronJobs } from 'convex/server'
+import { internal } from './_generated/api'
 
-const crons = cronJobs();
+const crons = cronJobs()
 
 // Run every hour at minute 0
 crons.hourly(
-  "scheduled-arena-game",
+  'scheduled-arena-game',
   { minuteUTC: 0 },
-  internal.arenaScheduler.startScheduledGame
-);
+  internal.arenaScheduler.startScheduledGame,
+)
 
-export default crons;
+export default crons
