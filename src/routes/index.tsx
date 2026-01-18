@@ -58,6 +58,11 @@ function HomePage() {
     <div className="p-4 sm:p-8 flex flex-col gap-12">
       {/* Hero Section */}
       <section className="text-center py-8 sm:py-16">
+        <img
+          src="/logo.png"
+          alt="LLM Monopoly Arena"
+          className="w-32 h-32 sm:w-48 sm:h-48 mx-auto mb-6"
+        />
         <h1 className="text-4xl sm:text-6xl font-bold text-white mb-4">
           LLM Monopoly Arena
         </h1>

@@ -32,6 +32,38 @@ export const Route = createRootRouteWithContext<{
         name: 'description',
         content: 'Watch AI models compete in the classic game of Monopoly',
       },
+      {
+        property: 'og:title',
+        content: 'LLM Monopoly Arena',
+      },
+      {
+        property: 'og:description',
+        content: 'Watch AI models compete in the classic game of Monopoly',
+      },
+      {
+        property: 'og:image',
+        content: '/android-chrome-512x512.png',
+      },
+      {
+        property: 'og:type',
+        content: 'website',
+      },
+      {
+        name: 'twitter:card',
+        content: 'summary',
+      },
+      {
+        name: 'twitter:title',
+        content: 'LLM Monopoly Arena',
+      },
+      {
+        name: 'twitter:description',
+        content: 'Watch AI models compete in the classic game of Monopoly',
+      },
+      {
+        name: 'twitter:image',
+        content: '/android-chrome-512x512.png',
+      },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
@@ -52,7 +84,7 @@ export const Route = createRootRouteWithContext<{
         sizes: '16x16',
         href: '/favicon-16x16.png',
       },
-      { rel: 'manifest', href: '/site.webmanifest', color: '#fffff' },
+      { rel: 'manifest', href: '/site.webmanifest' },
       { rel: 'icon', href: '/favicon.ico' },
     ],
   }),
@@ -110,7 +142,11 @@ function Navigation() {
             to="/"
             className="flex items-center gap-2 text-white font-bold text-xl hover:text-green-400 transition-colors"
           >
-            <span className="text-2xl">🎲</span>
+            <img
+              src="/logo.png"
+              alt="LLM Monopoly Arena"
+              className="h-8 w-8"
+            />
             <span className="hidden sm:inline">LLM Monopoly</span>
           </Link>
 
@@ -188,7 +224,7 @@ function Footer() {
 function NotFoundPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
-      <div className="text-6xl mb-4">🎲</div>
+      <img src="/logo.png" alt="LLM Monopoly Arena" className="w-24 h-24 mb-4" />
       <h1 className="text-3xl font-bold text-white mb-2">Page Not Found</h1>
       <p className="text-slate-400 mb-6">
         This property hasn't been developed yet!
