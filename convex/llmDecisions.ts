@@ -72,6 +72,7 @@ export const getLLMDecision = internalAction({
       `[LLM] Game: ${args.gameId} | Decision: ${args.decisionType} | Player: ${args.playerId}`,
     )
 
+    try {
     const decisionContext = safeParseJson(args.context)
     const validActions = getValidActions(args.decisionType, decisionContext)
 
@@ -270,6 +271,29 @@ export const getLLMDecision = internalAction({
       rawResponse,
       context: args.context,
     })
+    } catch (error) {
+      // Critical error handling - ensure game doesn't get stuck
+      console.error(
+        `[LLM_CRITICAL] Game: ${args.gameId} | Unhandled error in getLLMDecision: ${(error as Error).message}`,
+      )
+      console.error(`[LLM_CRITICAL] Stack: ${(error as Error).stack}`)
+
+      // Try to recover by clearing the waiting state and continuing the game
+      try {
+        await ctx.runMutation(
+          internal.llmDecisionExecutors.recoverFromError,
+          {
+            gameId: args.gameId,
+            errorMessage: (error as Error).message,
+          },
+        )
+      } catch (recoveryError) {
+        console.error(
+          `[LLM_CRITICAL] Recovery also failed: ${(recoveryError as Error).message}`,
+        )
+        // At this point the game will be stuck, but the 30-minute stale check will clean it up
+      }
+    }
   },
 })
 

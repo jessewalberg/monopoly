@@ -167,7 +167,51 @@ export const processTurnStep = internalMutation({
     if (game.isPaused) return
 
     // Don't process if waiting for LLM decision
-    if (game.waitingForLLM) return
+    // But check for stale waiting state (stuck for more than 5 minutes)
+    if (game.waitingForLLM) {
+      const lastUpdate = game._creationTime // Use creation time as fallback
+      const currentTurn = await ctx.db
+        .query('turns')
+        .withIndex('by_game', (q) => q.eq('gameId', args.gameId))
+        .order('desc')
+        .first()
+
+      const turnStartTime = currentTurn?.startedAt || lastUpdate
+      const waitingTime = Date.now() - turnStartTime
+      const MAX_LLM_WAIT_MS = 5 * 60 * 1000 // 5 minutes
+
+      if (waitingTime > MAX_LLM_WAIT_MS) {
+        console.log(
+          `[GAME] ${args.gameId} | Stale LLM wait detected (${Math.round(waitingTime / 1000)}s), forcing recovery`,
+        )
+
+        // Force recovery - skip to next phase
+        let nextPhase = game.currentPhase
+        if (game.currentPhase === 'pre_roll') {
+          nextPhase = 'rolling'
+        } else if (game.currentPhase === 'post_roll') {
+          nextPhase = 'turn_end'
+        }
+
+        await ctx.db.patch("games", args.gameId, {
+          waitingForLLM: false,
+          pendingDecision: undefined,
+          currentPhase: nextPhase,
+        })
+
+        if (currentTurn) {
+          const events = currentTurn.events || []
+          events.push(`[RECOVERY] Stale LLM wait (${Math.round(waitingTime / 1000)}s) - skipping to ${nextPhase}`)
+          await ctx.db.patch("turns", currentTurn._id, { events })
+        }
+
+        // Re-schedule to process with the new phase
+        await ctx.scheduler.runAfter(100, internal.gameEngine.processTurnStep, {
+          gameId: args.gameId,
+        })
+      }
+      return
+    }
 
     // Get all game data
     const players = await ctx.db

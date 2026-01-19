@@ -54,6 +54,70 @@ export const clearWaitingState = internalMutation({
 })
 
 /**
+ * Recover from an error in the LLM decision flow
+ * This ensures the game doesn't get stuck when an unexpected error occurs
+ */
+export const recoverFromError = internalMutation({
+  args: {
+    gameId: v.id('games'),
+    errorMessage: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const game = await ctx.db.get("games", args.gameId)
+    if (!game) return
+
+    // Only recover if game is still in progress
+    if (game.status !== 'in_progress') return
+
+    console.log(
+      `[RECOVERY] Game: ${args.gameId} | Recovering from error: ${args.errorMessage}`,
+    )
+
+    // Log the error to the current turn if possible
+    const currentTurn = await ctx.db
+      .query('turns')
+      .withIndex('by_game', (q) => q.eq('gameId', args.gameId))
+      .order('desc')
+      .first()
+
+    if (currentTurn) {
+      const events = currentTurn.events || []
+      events.push(`[ERROR] Recovery triggered: ${args.errorMessage}`)
+      await ctx.db.patch("turns", currentTurn._id, { events })
+    }
+
+    // Determine a safe phase to resume from
+    // If we were waiting for LLM, skip to the next logical phase
+    let nextPhase = game.currentPhase
+    if (game.currentPhase === 'pre_roll') {
+      nextPhase = 'rolling'
+    } else if (game.currentPhase === 'post_roll') {
+      nextPhase = 'turn_end'
+    }
+
+    // Clear waiting state and continue
+    await ctx.db.patch("games", args.gameId, {
+      waitingForLLM: false,
+      pendingDecision: undefined,
+      currentPhase: nextPhase,
+    })
+
+    // Schedule next step
+    await ctx.scheduler.runAfter(
+      game.config.speedMs,
+      internal.gameEngine.processTurnStep,
+      {
+        gameId: args.gameId,
+      },
+    )
+
+    console.log(
+      `[RECOVERY] Game: ${args.gameId} | Recovered, resuming at phase: ${nextPhase}`,
+    )
+  },
+})
+
+/**
  * Execute a buy property decision
  */
 export const executeBuyPropertyDecision = internalMutation({

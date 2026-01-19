@@ -33,6 +33,9 @@ const TOKEN_COLORS = [
   { name: 'Purple', hex: '#A855F7', textColor: '#FFFFFF' },
 ] as const
 
+// Maximum time a game can be in_progress before being considered stuck (30 minutes)
+const STALE_GAME_THRESHOLD_MS = 30 * 60 * 1000
+
 /**
  * Start a scheduled arena game with all budget models
  * This is called by the cron job every hour
@@ -47,11 +50,38 @@ export const startScheduledGame = internalMutation({
       .first()
 
     if (activeGame) {
-      console.log(
-        '[ARENA] Skipping scheduled game - active game in progress:',
-        activeGame._id,
-      )
-      return null
+      // Check if the game is stale (stuck for more than 30 minutes)
+      const gameAge = Date.now() - (activeGame.startedAt || activeGame.createdAt || 0)
+
+      if (gameAge > STALE_GAME_THRESHOLD_MS) {
+        console.log(
+          '[ARENA] Abandoning stale game:',
+          activeGame._id,
+          `(stuck for ${Math.round(gameAge / 60000)} minutes)`,
+        )
+
+        // Abandon the stale game
+        await ctx.db.patch("games", activeGame._id, {
+          status: 'abandoned',
+          endingReason: 'error',
+          currentPhase: 'game_over',
+          endedAt: Date.now(),
+        })
+
+        await ctx.scheduler.runAfter(
+          0,
+          internal.statsAggregator.trackGameAbandoned,
+          {},
+        )
+
+        // Continue to start new game below
+      } else {
+        console.log(
+          '[ARENA] Skipping scheduled game - active game in progress:',
+          activeGame._id,
+        )
+        return null
+      }
     }
 
     console.log('[ARENA] Starting scheduled arena game with all budget models')
