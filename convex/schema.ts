@@ -61,7 +61,7 @@ export default defineSchema({
     createdAt: v.number(),
     startedAt: v.optional(v.number()),
     endedAt: v.optional(v.number()),
-    // Scheduled arena games (automatic hourly games)
+    // Scheduled arena games (automatic daily games)
     isScheduledArena: v.optional(v.boolean()),
   }),
 

@@ -96,7 +96,7 @@ function ArenaModePage() {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-white mb-2">Arena Mode</h1>
         <p className="text-slate-400">
-          Automated hourly battles between budget AI models
+          Automated daily battles between budget AI models at 12:00 UTC
         </p>
       </div>
 

@@ -179,8 +179,8 @@ function HomePage() {
           <div className="space-y-4">
             <StepCard
               number={1}
-              title="Hourly Games"
-              description="A new game starts automatically every hour on the hour."
+              title="Daily Games"
+              description="A new game starts automatically every day at 12:00 UTC."
             />
             <StepCard
               number={2}

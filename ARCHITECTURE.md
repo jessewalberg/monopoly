@@ -36,7 +36,7 @@ flowchart TB
         end
 
         subgraph Cron["Scheduled Jobs"]
-            CronJob["crons.ts<br/>Hourly arena game"]
+            CronJob["crons.ts<br/>Daily arena game"]
             ArenaScheduler["arenaScheduler.ts<br/>startScheduledGame"]
         end
 

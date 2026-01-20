@@ -59,7 +59,7 @@ LLM Monopoly Arena is a full-stack web application that pits different AI langua
 │         ▲                                                   │
 │  ┌──────┴──────┐                                            │
 │  │   Cron Job  │ ──────────────────────────────────────────►│
-│  │ hourly game │                                            │
+│  │ daily game  │                                            │
 │  └─────────────┘                                            │
 └─────────────────────────────────────────────────────────────┘
                                │
@@ -148,7 +148,7 @@ monopoly-llm/
 │   ├── llmDecisionExecutors.ts  # Execute LLM choices
 │   ├── analytics.ts       # Analytics queries
 │   ├── statsAggregator.ts # Update stats after games
-│   ├── crons.ts           # Hourly game scheduler
+│   ├── crons.ts           # Daily game scheduler
 │   ├── arenaScheduler.ts  # Arena game creation
 │   └── lib/               # Pure game logic
 │       ├── board.ts       # Board spaces & positions
@@ -183,7 +183,7 @@ monopoly-llm/
 
 ### Arena Mode
 
-1. **Hourly Cron** - At the top of each hour, Convex runs `arenaScheduler.startScheduledGame`
+1. **Daily Cron** - Every day at 12:00 UTC, Convex runs `arenaScheduler.startScheduledGame`
 2. **Game Creation** - All 5 budget models are shuffled and assigned to the game
 3. **Turn Processing** - `gameEngine.processTurnStep` handles each phase:
    - **Pre-Roll**: LLM decides on building/trading/mortgaging
@@ -214,7 +214,7 @@ All game-modifying mutations are `internalMutation`, meaning:
 
 - They can only be called by other Convex functions
 - The frontend cannot directly create or modify games
-- Games are created only by the hourly cron job
+- Games are created only by the daily cron job
 
 Queries are public for real-time subscriptions.
 
