@@ -3,10 +3,10 @@ import { internal } from './_generated/api'
 
 const crons = cronJobs()
 
-// Run every hour at minute 0
-crons.hourly(
+// Run once daily at 12:00 UTC (noon)
+crons.daily(
   'scheduled-arena-game',
-  { minuteUTC: 0 },
+  { hourUTC: 12, minuteUTC: 0 },
   internal.arenaScheduler.startScheduledGame,
 )
 

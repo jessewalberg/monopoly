@@ -9,10 +9,11 @@ Watch AI models battle for Boardwalk! An automated arena where Claude, GPT, Gemi
 
 ## Overview
 
-LLM Monopoly Arena is a full-stack web application that pits different AI language models against each other in games of Monopoly. The platform runs automated hourly games using budget-tier models, tracks comprehensive analytics, and provides real-time game viewing.
+LLM Monopoly Arena is a full-stack web application that pits different AI language models against each other in games of Monopoly. The platform runs automated daily games using budget-tier models, tracks comprehensive analytics, and provides real-time game viewing.
+
 ### Key Features
 
-- **Automated Arena Mode** - Hourly games run automatically with 5 budget-tier models
+- **Automated Arena Mode** - Daily games run automatically at 12:00 UTC with 5 budget-tier models
 - **Real-time Game Viewing** - Watch games as they happen with live board updates
 - **LLM Decision Transparency** - See the reasoning behind every AI decision
 - **Comprehensive Analytics** - Track win rates, head-to-head records, and strategy profiles

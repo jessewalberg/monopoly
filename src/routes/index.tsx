@@ -13,15 +13,15 @@ export const Route = createFileRoute('/')({
 })
 
 // ============================================================
-// COUNTDOWN HOOK
+// COUNTDOWN HOOK - Daily game at 12:00 UTC
 // ============================================================
 
-function useNextHourCountdown() {
-  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextHour())
+function useNextGameCountdown() {
+  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextGame())
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimeLeft(getTimeToNextHour())
+      setTimeLeft(getTimeToNextGame())
     }, 1000)
     return () => clearInterval(interval)
   }, [])
@@ -29,13 +29,22 @@ function useNextHourCountdown() {
   return timeLeft
 }
 
-function getTimeToNextHour(): { minutes: number; seconds: number } {
+function getTimeToNextGame(): { hours: number; minutes: number; seconds: number } {
   const now = new Date()
-  const nextHour = new Date(now)
-  nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0)
-  const diff = nextHour.getTime() - now.getTime()
+  const nextGame = new Date(now)
+
+  // Set to 12:00 UTC today
+  nextGame.setUTCHours(12, 0, 0, 0)
+
+  // If we've passed 12:00 UTC today, set to tomorrow
+  if (now >= nextGame) {
+    nextGame.setUTCDate(nextGame.getUTCDate() + 1)
+  }
+
+  const diff = nextGame.getTime() - now.getTime()
   return {
-    minutes: Math.floor(diff / 60000),
+    hours: Math.floor(diff / 3600000),
+    minutes: Math.floor((diff % 3600000) / 60000),
     seconds: Math.floor((diff % 60000) / 1000),
   }
 }
@@ -45,7 +54,7 @@ function getTimeToNextHour(): { minutes: number; seconds: number } {
 // ============================================================
 
 function HomePage() {
-  const countdown = useNextHourCountdown()
+  const countdown = useNextGameCountdown()
   const { data: recentGames } = useSuspenseQuery(
     convexQuery(api.games.list, { limit: 5 }),
   )
@@ -69,7 +78,7 @@ function HomePage() {
           LLM Monopoly Arena
         </h1>
         <p className="text-lg sm:text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-          Watch AI models battle for Boardwalk - automated hourly matches
+          Watch AI models battle for Boardwalk - daily automated matches
           between Claude, GPT, Gemini, and Grok
         </p>
 
@@ -97,11 +106,13 @@ function HomePage() {
           </div>
         ) : (
           <div className="mb-8">
-            <div className="text-slate-400 mb-2">Next game in</div>
+            <div className="text-slate-400 mb-2">Next daily game in</div>
             <div className="text-5xl font-bold text-green-400 font-mono mb-4">
+              {String(countdown.hours).padStart(2, '0')}:
               {String(countdown.minutes).padStart(2, '0')}:
               {String(countdown.seconds).padStart(2, '0')}
             </div>
+            <div className="text-slate-500 text-sm mb-4">Games run daily at 12:00 UTC</div>
             <Link
               to="/play"
               className="bg-slate-700 hover:bg-slate-600 text-white text-center py-4 px-8 rounded-lg font-bold text-xl transition-colors"
