@@ -40,15 +40,15 @@ const BUDGET_MODELS = [
 ]
 
 // ============================================================
-// COUNTDOWN HOOK
+// COUNTDOWN HOOK - Daily game at 12:00 UTC
 // ============================================================
 
-function useNextHourCountdown() {
-  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextHour())
+function useNextGameCountdown() {
+  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextGame())
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimeLeft(getTimeToNextHour())
+      setTimeLeft(getTimeToNextGame())
     }, 1000)
     return () => clearInterval(interval)
   }, [])
@@ -56,13 +56,22 @@ function useNextHourCountdown() {
   return timeLeft
 }
 
-function getTimeToNextHour(): { minutes: number; seconds: number } {
+function getTimeToNextGame(): { hours: number; minutes: number; seconds: number } {
   const now = new Date()
-  const nextHour = new Date(now)
-  nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0)
-  const diff = nextHour.getTime() - now.getTime()
+  const nextGame = new Date(now)
+
+  // Set to 12:00 UTC today
+  nextGame.setUTCHours(12, 0, 0, 0)
+
+  // If we've passed 12:00 UTC today, set to tomorrow
+  if (now >= nextGame) {
+    nextGame.setUTCDate(nextGame.getUTCDate() + 1)
+  }
+
+  const diff = nextGame.getTime() - now.getTime()
   return {
-    minutes: Math.floor(diff / 60000),
+    hours: Math.floor(diff / 3600000),
+    minutes: Math.floor((diff % 3600000) / 60000),
     seconds: Math.floor((diff % 60000) / 1000),
   }
 }
@@ -73,7 +82,7 @@ function getTimeToNextHour(): { minutes: number; seconds: number } {
 
 function ArenaModePage() {
   const navigate = useNavigate()
-  const countdown = useNextHourCountdown()
+  const countdown = useNextGameCountdown()
 
   // Check for active games
   const { data: games } = useSuspenseQuery(
@@ -137,13 +146,14 @@ function ArenaModePage() {
           <CardBody>
             <div className="text-center py-6">
               <div className="text-6xl font-bold text-green-400 mb-2 font-mono">
+                {String(countdown.hours).padStart(2, '0')}:
                 {String(countdown.minutes).padStart(2, '0')}:
                 {String(countdown.seconds).padStart(2, '0')}
               </div>
               <p className="text-slate-400">until next scheduled game</p>
             </div>
             <p className="text-sm text-slate-500 text-center">
-              Games run automatically every hour on the hour
+              Games run daily at 12:00 UTC
             </p>
           </CardBody>
         </Card>
