@@ -43,6 +43,13 @@ const STALE_GAME_THRESHOLD_MS = 30 * 60 * 1000
 export const startScheduledGame = internalMutation({
   args: {},
   handler: async (ctx) => {
+    // Check if arena is enabled via environment variable
+    const arenaEnabled = process.env.ARENA_ENABLED !== 'false'
+    if (!arenaEnabled) {
+      console.log('[ARENA] Scheduled games disabled via ARENA_ENABLED env var')
+      return null
+    }
+
     // Check for active games - skip if one is already running
     const activeGame = await ctx.db
       .query('games')
