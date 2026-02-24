@@ -37,6 +37,8 @@ import type {PlayerState} from './lib/validation';
 import type {MutationCtx} from './_generated/server';
 import type { Doc, Id } from './_generated/dataModel'
 
+const ARENA_ENABLED = process.env.ARENA_ENABLED === 'true'
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -158,6 +160,23 @@ export const processTurnStep = internalMutation({
   handler: async (ctx, args) => {
     const game = await ctx.db.get("games", args.gameId)
     if (!game || game.status !== 'in_progress') return
+
+    if (game.isScheduledArena && !ARENA_ENABLED) {
+      await ctx.db.patch("games", args.gameId, {
+        status: 'abandoned',
+        endingReason: 'error',
+        currentPhase: 'game_over',
+        endedAt: Date.now(),
+        waitingForLLM: false,
+        pendingDecision: undefined,
+      })
+      await ctx.scheduler.runAfter(
+        0,
+        internal.statsAggregator.trackGameAbandoned,
+        {},
+      )
+      return
+    }
 
     console.log(
       `[GAME] ${args.gameId} | Turn ${game.currentTurnNumber} | Phase: ${game.currentPhase}`,

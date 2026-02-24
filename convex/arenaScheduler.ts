@@ -35,6 +35,7 @@ const TOKEN_COLORS = [
 
 // Maximum time a game can be in_progress before being considered stuck (30 minutes)
 const STALE_GAME_THRESHOLD_MS = 30 * 60 * 1000
+const ARENA_ENABLED = process.env.ARENA_ENABLED === 'true'
 
 /**
  * Start a scheduled arena game with all budget models
@@ -43,10 +44,11 @@ const STALE_GAME_THRESHOLD_MS = 30 * 60 * 1000
 export const startScheduledGame = internalMutation({
   args: {},
   handler: async (ctx) => {
-    // Check if arena is enabled via environment variable
-    const arenaEnabled = process.env.ARENA_ENABLED !== 'false'
-    if (!arenaEnabled) {
-      console.log('[ARENA] Scheduled games disabled via ARENA_ENABLED env var')
+    // Arena is now opt-in. It stays paused unless explicitly enabled.
+    if (!ARENA_ENABLED) {
+      console.log(
+        '[ARENA] Scheduled games are paused. Set ARENA_ENABLED=true to re-enable.',
+      )
       return null
     }
 

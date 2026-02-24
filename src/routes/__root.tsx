@@ -101,12 +101,26 @@ function RootComponent() {
     <RootDocument>
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col">
         <Navigation />
+        <PausedBanner />
         <main className="flex-1">
           <Outlet />
         </main>
         <Footer />
       </div>
     </RootDocument>
+  )
+}
+
+function PausedBanner() {
+  return (
+    <div className="border-b border-amber-700/60 bg-amber-500/15">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <p className="text-amber-200 text-sm sm:text-base font-medium text-center">
+          Arena is paused: AI runtime costs became too expensive to keep this
+          running.
+        </p>
+      </div>
+    </div>
   )
 }
 

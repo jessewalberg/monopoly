@@ -1,7 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
-import { useEffect, useState } from 'react'
 import { api } from '../../convex/_generated/api'
 
 // ============================================================
@@ -13,48 +12,10 @@ export const Route = createFileRoute('/')({
 })
 
 // ============================================================
-// COUNTDOWN HOOK - Daily game at 12:00 UTC
-// ============================================================
-
-function useNextGameCountdown() {
-  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextGame())
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeLeft(getTimeToNextGame())
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  return timeLeft
-}
-
-function getTimeToNextGame(): { hours: number; minutes: number; seconds: number } {
-  const now = new Date()
-  const nextGame = new Date(now)
-
-  // Set to 12:00 UTC today
-  nextGame.setUTCHours(12, 0, 0, 0)
-
-  // If we've passed 12:00 UTC today, set to tomorrow
-  if (now >= nextGame) {
-    nextGame.setUTCDate(nextGame.getUTCDate() + 1)
-  }
-
-  const diff = nextGame.getTime() - now.getTime()
-  return {
-    hours: Math.floor(diff / 3600000),
-    minutes: Math.floor((diff % 3600000) / 60000),
-    seconds: Math.floor((diff % 60000) / 1000),
-  }
-}
-
-// ============================================================
 // HOME PAGE
 // ============================================================
 
 function HomePage() {
-  const countdown = useNextGameCountdown()
   const { data: recentGames } = useSuspenseQuery(
     convexQuery(api.games.list, { limit: 5 }),
   )
@@ -78,8 +39,8 @@ function HomePage() {
           LLM Monopoly Arena
         </h1>
         <p className="text-lg sm:text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-          Watch AI models battle for Boardwalk - daily automated matches
-          between Claude, GPT, Gemini, and Grok
+          Watch past AI Monopoly battles and analytics. Live arena execution is
+          currently paused due to operating cost.
         </p>
 
         {/* Active Game or Countdown */}
@@ -106,18 +67,18 @@ function HomePage() {
           </div>
         ) : (
           <div className="mb-8">
-            <div className="text-slate-400 mb-2">Next daily game in</div>
-            <div className="text-5xl font-bold text-green-400 font-mono mb-4">
-              {String(countdown.hours).padStart(2, '0')}:
-              {String(countdown.minutes).padStart(2, '0')}:
-              {String(countdown.seconds).padStart(2, '0')}
+            <div className="inline-flex items-center gap-2 bg-amber-600/20 border border-amber-500 rounded-lg px-4 py-2 mb-4">
+              <span className="text-amber-400 font-medium">Arena Paused</span>
             </div>
-            <div className="text-slate-500 text-sm mb-4">Games run daily at 12:00 UTC</div>
+            <div className="text-slate-400 text-sm mb-4">
+              New AI games are on hold because runtime costs were too expensive
+              to sustain.
+            </div>
             <Link
               to="/play"
               className="bg-slate-700 hover:bg-slate-600 text-white text-center py-4 px-8 rounded-lg font-bold text-xl transition-colors"
             >
-              View Arena Mode
+              View Arena Status
             </Link>
           </div>
         )}
@@ -160,7 +121,7 @@ function HomePage() {
           </div>
           {recentGames.length === 0 ? (
             <p className="text-slate-400">
-              No games played yet. Start a new game!
+              No games yet. Arena is currently paused.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -179,18 +140,18 @@ function HomePage() {
           <div className="space-y-4">
             <StepCard
               number={1}
-              title="Daily Games"
-              description="A new game starts automatically every day at 12:00 UTC."
+              title="Arena Paused"
+              description="Automated runs are currently paused due to AI runtime cost."
             />
             <StepCard
               number={2}
-              title="Budget Models Compete"
-              description="5 budget-tier models battle: GPT-4o Mini, Gemini Flash, Claude Haiku, and more."
+              title="Past Runs"
+              description="Browse previously completed games from GPT, Gemini, Claude, and Grok."
             />
             <StepCard
               number={3}
-              title="Watch Live"
-              description="See real-time decisions, trades, and property strategies as they happen."
+              title="Replay Decisions"
+              description="Inspect turn-by-turn events, trades, and property strategy from prior games."
             />
             <StepCard
               number={4}
@@ -236,7 +197,7 @@ function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <FeatureCard
             title="Real-time Gameplay"
-            description="Watch AI models make decisions in real-time with full reasoning visibility."
+            description="Real-time gameplay is paused; previous games remain available for analysis."
             icon="⚡"
           />
           <FeatureCard

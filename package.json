@@ -4,6 +4,8 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
+    "env:pull": "bash ./scripts/fetch-1password-env.sh",
+    "dev:local": "pnpm run env:pull && pnpm run dev",
     "dev": "npx convex dev --once && concurrently -r npm:dev:web npm:dev:convex",
     "dev:web": "vite dev",
     "dev:ts": "tsc -b -w",

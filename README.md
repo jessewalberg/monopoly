@@ -232,6 +232,8 @@ The platform tracks:
 
 | Command                | Description                          |
 | ---------------------- | ------------------------------------ |
+| `pnpm run env:pull`    | Fetch `.env.local` from 1Password    |
+| `pnpm run dev:local`   | Pull secrets, then start local dev   |
 | `pnpm run dev`         | Start development server with Convex |
 | `pnpm run build`       | Build for production                 |
 | `pnpm run test`        | Run unit tests                       |
@@ -239,6 +241,24 @@ The platform tracks:
 | `npx convex dev`       | Start Convex dev mode only           |
 | `npx convex deploy`    | Deploy Convex to production          |
 | `npx convex dashboard` | Open Convex dashboard                |
+
+### Local Secrets via 1Password
+
+This repo can pull local env vars from 1Password using:
+
+```bash
+pnpm run env:pull
+```
+
+Default source:
+
+`op://Private/64vemiaz6crtuooztbqfv6gd34/.env.local`
+
+Then start dev with secrets pre-fetched:
+
+```bash
+pnpm run dev:local
+```
 
 ### Environment Variables
 

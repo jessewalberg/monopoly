@@ -1,7 +1,7 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { api } from '../../../convex/_generated/api'
 import { Card, CardBody, CardHeader } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -40,49 +40,11 @@ const BUDGET_MODELS = [
 ]
 
 // ============================================================
-// COUNTDOWN HOOK - Daily game at 12:00 UTC
-// ============================================================
-
-function useNextGameCountdown() {
-  const [timeLeft, setTimeLeft] = useState(() => getTimeToNextGame())
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeLeft(getTimeToNextGame())
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  return timeLeft
-}
-
-function getTimeToNextGame(): { hours: number; minutes: number; seconds: number } {
-  const now = new Date()
-  const nextGame = new Date(now)
-
-  // Set to 12:00 UTC today
-  nextGame.setUTCHours(12, 0, 0, 0)
-
-  // If we've passed 12:00 UTC today, set to tomorrow
-  if (now >= nextGame) {
-    nextGame.setUTCDate(nextGame.getUTCDate() + 1)
-  }
-
-  const diff = nextGame.getTime() - now.getTime()
-  return {
-    hours: Math.floor(diff / 3600000),
-    minutes: Math.floor((diff % 3600000) / 60000),
-    seconds: Math.floor((diff % 60000) / 1000),
-  }
-}
-
-// ============================================================
 // ARENA MODE PAGE
 // ============================================================
 
 function ArenaModePage() {
   const navigate = useNavigate()
-  const countdown = useNextGameCountdown()
 
   // Check for active games
   const { data: games } = useSuspenseQuery(
@@ -105,7 +67,7 @@ function ArenaModePage() {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-white mb-2">Arena Mode</h1>
         <p className="text-slate-400">
-          Automated daily battles between budget AI models at 12:00 UTC
+          Automated AI games are currently paused
         </p>
       </div>
 
@@ -139,21 +101,14 @@ function ArenaModePage() {
           </CardBody>
         </Card>
       ) : (
-        <Card className="mb-8">
+        <Card className="mb-8 border-amber-500/60">
           <CardHeader>
-            <h2 className="text-xl font-bold text-white">Next Game</h2>
+            <h2 className="text-xl font-bold text-white">Arena Paused</h2>
           </CardHeader>
           <CardBody>
-            <div className="text-center py-6">
-              <div className="text-6xl font-bold text-green-400 mb-2 font-mono">
-                {String(countdown.hours).padStart(2, '0')}:
-                {String(countdown.minutes).padStart(2, '0')}:
-                {String(countdown.seconds).padStart(2, '0')}
-              </div>
-              <p className="text-slate-400">until next scheduled game</p>
-            </div>
-            <p className="text-sm text-slate-500 text-center">
-              Games run daily at 12:00 UTC
+            <p className="text-slate-300 text-center">
+              New AI games are paused because runtime costs became too expensive
+              to keep operating continuously.
             </p>
           </CardBody>
         </Card>
