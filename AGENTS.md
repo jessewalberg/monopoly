@@ -39,10 +39,11 @@ pure logic (e.g. `convex/lib/*.test.ts`).
   statsAggregator). `convex/lib/` holds **pure game logic with no DB access**
   (constants/board data, board helpers, rent, validation, cards, types,
   errors) — keep it DB-free and unit-tested.
-- `app/` — frontend. `routes/` are TanStack Start pages (landing, `play/`,
-  `analytics/`, `games/` replay). `components/` split into game/, analytics/,
-  setup/, ui/ (each re-exported via `index.ts`). `lib/models.ts` lists
-  available LLM models.
+- `src/` — frontend. `src/routes/` are TanStack Start pages (landing,
+  `play/`, `analytics/`, `games/` replay). `src/components/` split into
+  game/, analytics/, setup/, ui/ (each re-exported via `index.ts`).
+  `src/lib/models.ts` lists available LLM models; hooks in `src/hooks/`,
+  styles in `src/styles/`.
 
 ## Convex conventions
 
