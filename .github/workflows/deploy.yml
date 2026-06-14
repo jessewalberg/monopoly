@@ -2,22 +2,30 @@
 # deploy branch this runs the test gate, then deploys for the matching env. The
 # two deploy bootstrap creds are GitHub *Environment* secrets (from 1Password);
 # public bundle vars come from committed .env.<mode> files, not secrets.
+#
+# Gate split (PR-gate rollout): the `gate` job (checkout/setup/install/test)
+# runs on BOTH push and pull_request — every PR is gated before merge. The
+# `deploy` job needs the gate and runs ONLY on push to a deploy branch, so the
+# production environment, the deploy bootstrap secrets, and the convex/wrangler
+# deploy commands never execute on a PR. The `no-secrets-in-ci` guard runs on
+# both events and fails closed if any workflow reverts to resolving runtime
+# secrets in CI.
 
 name: Deploy
 
 on:
   push:
     branches: [main]
+  pull_request: {}
 
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Deploy production
+  gate:
+    name: Gate (test)
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
@@ -32,6 +40,37 @@ jobs:
       - name: Test gate
         run: pnpm test
 
+  no-secrets-in-ci:
+    name: No secrets in CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # Self-test FIRST: run the guard against embedded known-good / known-bad
+      # fixtures. A PR that weakens the matchers (the same-diff bypass) makes
+      # the planted markers go undetected, so the self-test fails and the job
+      # goes red before the real scan ever runs.
+      - name: Guard self-test (fixtures)
+        run: bash .github/scripts/check-no-secrets-in-ci.sh --self-test
+      - name: Check no secrets resolved in CI
+        run: bash .github/scripts/check-no-secrets-in-ci.sh .github/workflows
+
+  deploy:
+    name: Deploy production
+    needs: [gate, no-secrets-in-ci]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
       - name: Deploy
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
@@ -42,4 +81,3 @@ jobs:
           pnpm exec convex deploy
           pnpm build:"$BUILD_MODE" || pnpm build
           pnpm exec wrangler deploy
-
