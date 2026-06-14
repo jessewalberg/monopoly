@@ -45,12 +45,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      # Self-test FIRST: run the guard against embedded known-good / known-bad
+      # fixtures. A PR that weakens the matchers (the same-diff bypass) makes
+      # the planted markers go undetected, so the self-test fails and the job
+      # goes red before the real scan ever runs.
+      - name: Guard self-test (fixtures)
+        run: bash .github/scripts/check-no-secrets-in-ci.sh --self-test
       - name: Check no secrets resolved in CI
         run: bash .github/scripts/check-no-secrets-in-ci.sh .github/workflows
 
   deploy:
     name: Deploy production
-    needs: gate
+    needs: [gate, no-secrets-in-ci]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: production
