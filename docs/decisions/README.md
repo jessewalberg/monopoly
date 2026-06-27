@@ -1,12 +1,7 @@
 # Decisions
 
-**New durable decisions for this project live in the programming-vault:**
-`programming-vault/Projects/monopoly/Decisions/` (ADR template at
-`programming-vault/System/Templates/ADR.md`). The vault is the canonical
-decision store for the whole portfolio — see vault ADR-0002
-(`Projects/programming-vault/Decisions/ADR-0002-decisions-live-in-the-vault.md`).
+Durable decisions for this project live in this directory as repo-local ADRs.
+Do not use the retired cross-repo state store for new decisions.
 
-ADRs already in this directory (if any) are **grandfathered in place** — they
-remain valid and citable here; do not move them. If one is superseded, file
-the superseding ADR in the vault and add a `superseded_by` note to the
-original here.
+Create ADRs as `ADR-NNNN-short-title.md` and keep supersession notes in this
+directory. Existing ADRs remain valid and citable here.
