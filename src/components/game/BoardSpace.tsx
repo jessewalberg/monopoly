@@ -6,8 +6,8 @@ import {
   
 } from './Board'
 import type {BoardSide, PlayerOnBoard, PropertyOnBoard} from './Board';
-import type { BoardSpace, PropertyGroup } from '../../../convex/lib/constants'
-import type { Id } from '../../../convex/_generated/dataModel'
+import type { BoardSpace, PropertyGroup } from '../../lib/game/constants'
+import type { Id } from '../../lib/game/id'
 
 // ============================================================
 // TYPES

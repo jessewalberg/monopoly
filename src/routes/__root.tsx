@@ -26,19 +26,21 @@ export const Route = createRootRouteWithContext<{
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'LLM Monopoly Arena',
+        title: 'LLM Monopoly Arena Museum',
       },
       {
         name: 'description',
-        content: 'Watch AI models compete in the classic game of Monopoly',
+        content:
+          'A static historical museum of completed AI Monopoly games and analytics. Live arena play has been retired.',
       },
       {
         property: 'og:title',
-        content: 'LLM Monopoly Arena',
+        content: 'LLM Monopoly Arena Museum',
       },
       {
         property: 'og:description',
-        content: 'Watch AI models compete in the classic game of Monopoly',
+        content:
+          'Browse archived AI Monopoly replays and historical model analytics. Live competition is retired.',
       },
       {
         property: 'og:image',
@@ -54,11 +56,12 @@ export const Route = createRootRouteWithContext<{
       },
       {
         name: 'twitter:title',
-        content: 'LLM Monopoly Arena',
+        content: 'LLM Monopoly Arena Museum',
       },
       {
         name: 'twitter:description',
-        content: 'Watch AI models compete in the classic game of Monopoly',
+        content:
+          'A static historical museum of completed AI Monopoly games and analytics.',
       },
       {
         name: 'twitter:image',
@@ -116,8 +119,8 @@ function PausedBanner() {
     <div className="border-b border-amber-700/60 bg-amber-500/15">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <p className="text-amber-200 text-sm sm:text-base font-medium text-center">
-          Arena is paused: AI runtime costs became too expensive to keep this
-          running.
+          Static museum archive: live AI arena play has been retired. Completed
+          games and analytics remain available for browsing.
         </p>
       </div>
     </div>
@@ -167,9 +170,9 @@ function Navigation() {
           {/* Nav Links */}
           <div className="flex items-center gap-1 sm:gap-2">
             <NavLink to="/">Home</NavLink>
-            <NavLink to="/play">Play</NavLink>
-            <NavLink to="/analytics">Analytics</NavLink>
             <NavLink to="/games">History</NavLink>
+            <NavLink to="/analytics">Analytics</NavLink>
+            <NavLink to="/play">Arena Status</NavLink>
           </div>
         </div>
       </nav>
@@ -199,31 +202,11 @@ function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-slate-400 text-sm">
-            LLM Monopoly Arena - Watch AI models compete
+            LLM Monopoly Arena Museum — historical AI Monopoly archive
           </div>
           <div className="flex items-center gap-4 text-sm text-slate-500">
-            <span>
-              Powered by{' '}
-              <a
-                href="https://openrouter.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-green-400 hover:text-green-300"
-              >
-                OpenRouter
-              </a>
-            </span>
-            <span>
-              Built with{' '}
-              <a
-                href="https://convex.dev"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-green-400 hover:text-green-300"
-              >
-                Convex
-              </a>
-            </span>
+            <span>Static Cloudflare-hosted museum</span>
+            <span>Former live stack retired (Convex + OpenRouter)</span>
           </div>
         </div>
       </div>

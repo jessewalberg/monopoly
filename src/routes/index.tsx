@@ -1,34 +1,24 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { convexQuery } from '@convex-dev/react-query'
-import { api } from '../../convex/_generated/api'
-
-// ============================================================
-// ROUTE DEFINITION
-// ============================================================
+import { getAnalytics, listCompletedGames } from '../lib/museum/data'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
 })
 
-// ============================================================
-// HOME PAGE
-// ============================================================
-
 function HomePage() {
-  const { data: recentGames } = useSuspenseQuery(
-    convexQuery(api.games.list, { limit: 5 }),
-  )
-  const { data: globalStats } = useSuspenseQuery(
-    convexQuery(api.analytics.getGlobalStats, {}),
-  )
-
-  // Filter recent games for in-progress detection
-  const inProgressGames = recentGames.filter((g) => g.status === 'in_progress')
+  const { data: recentGames } = useSuspenseQuery({
+    queryKey: ['museum', 'games', 'recent', 5],
+    queryFn: () => listCompletedGames({ limit: 5 }),
+  })
+  const { data: analytics } = useSuspenseQuery({
+    queryKey: ['museum', 'analytics'],
+    queryFn: getAnalytics,
+  })
+  const globalStats = analytics.global
 
   return (
     <div className="p-4 sm:p-8 flex flex-col gap-12">
-      {/* Hero Section */}
       <section className="text-center py-8 sm:py-16">
         <img
           src="/logo.png"
@@ -39,346 +29,93 @@ function HomePage() {
           LLM Monopoly Arena
         </h1>
         <p className="text-lg sm:text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-          Watch past AI Monopoly battles and analytics. Live arena execution is
-          currently paused due to operating cost.
+          A static museum of completed AI Monopoly battles and analytics. Live
+          arena play has been retired.
         </p>
 
-        {/* Active Game or Countdown */}
-        {inProgressGames.length > 0 ? (
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-2 bg-green-600/20 border border-green-500 rounded-lg px-4 py-2 mb-4">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-              </span>
-              <span className="text-green-400 font-medium">
-                Game In Progress
-              </span>
-            </div>
-            <div>
-              <Link
-                to="/play/$gameId"
-                params={{ gameId: inProgressGames[0]._id }}
-                className="bg-green-600 hover:bg-green-700 text-white text-center py-4 px-8 rounded-lg font-bold text-xl transition-colors shadow-lg shadow-green-600/20"
-              >
-                Watch Live Game
-              </Link>
-            </div>
+        <div className="mb-8">
+          <div className="inline-flex items-center gap-2 bg-amber-600/20 border border-amber-500 rounded-lg px-4 py-2 mb-4">
+            <span className="text-amber-400 font-medium">Museum Mode</span>
           </div>
-        ) : (
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-2 bg-amber-600/20 border border-amber-500 rounded-lg px-4 py-2 mb-4">
-              <span className="text-amber-400 font-medium">Arena Paused</span>
-            </div>
-            <div className="text-slate-400 text-sm mb-4">
-              New AI games are on hold because runtime costs were too expensive
-              to sustain.
-            </div>
-            <Link
-              to="/play"
-              className="bg-slate-700 hover:bg-slate-600 text-white text-center py-4 px-8 rounded-lg font-bold text-xl transition-colors"
-            >
-              View Arena Status
-            </Link>
+          <div className="text-slate-400 text-sm mb-4">
+            Browse {globalStats.completedGames} completed replays and historical
+            model analytics.
           </div>
-        )}
-      </section>
-
-      {/* Quick Stats */}
-      <section className="max-w-4xl mx-auto w-full">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard
-            label="Total Games"
-            value={globalStats.totalGames.toString()}
-            icon="🎮"
-          />
-          <StatCard
-            label="Completed"
-            value={globalStats.completedGames.toString()}
-            icon="🏆"
-          />
-          <StatCard
-            label="In Progress"
-            value={globalStats.inProgressGames.toString()}
-            icon="🎲"
-          />
-          <StatCard label="AI Models" value={globalStats.totalModelsPlayed.toString()} icon="🤖" />
-        </div>
-      </section>
-
-      {/* Main Content Grid */}
-      <section className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Games */}
-        <div className="bg-slate-800 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">Recent Games</h2>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               to="/games"
-              className="text-sm text-green-400 hover:text-green-300"
+              className="bg-green-600 hover:bg-green-700 text-white text-center py-4 px-8 rounded-lg font-bold text-xl transition-colors"
             >
-              View All
+              Browse Game History
+            </Link>
+            <Link
+              to="/analytics"
+              className="bg-slate-700 hover:bg-slate-600 text-white text-center py-4 px-8 rounded-lg font-bold text-xl transition-colors"
+            >
+              View Analytics
             </Link>
           </div>
-          {recentGames.length === 0 ? (
-            <p className="text-slate-400">
-              No games yet. Arena is currently paused.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {recentGames.slice(0, 5).map((game) => (
-                <GameLink key={game._id} game={game} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* How It Works */}
-        <div className="bg-slate-800 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-white mb-4">
-            How Arena Mode Works
-          </h2>
-          <div className="space-y-4">
-            <StepCard
-              number={1}
-              title="Arena Paused"
-              description="Automated runs are currently paused due to AI runtime cost."
-            />
-            <StepCard
-              number={2}
-              title="Past Runs"
-              description="Browse previously completed games from GPT, Gemini, Claude, and Grok."
-            />
-            <StepCard
-              number={3}
-              title="Replay Decisions"
-              description="Inspect turn-by-turn events, trades, and property strategy from prior games."
-            />
-            <StepCard
-              number={4}
-              title="Review & Analyze"
-              description="Explore analytics, head-to-head stats, and replay past games."
-            />
-          </div>
         </div>
       </section>
 
-      {/* Quick Links */}
-      <section className="max-w-4xl mx-auto w-full">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <QuickLinkCard
-            to="/play"
-            title="Arena"
-            description="Watch live games"
-            icon="🎲"
-            color="green"
-          />
-          <QuickLinkCard
-            to="/analytics"
-            title="Analytics"
-            description="View model stats"
-            icon="📊"
-            color="blue"
-          />
-          <QuickLinkCard
-            to="/games"
-            title="History"
-            description="Browse past games"
-            icon="📜"
-            color="purple"
+      <section className="max-w-5xl mx-auto w-full">
+        <h2 className="text-2xl font-bold text-white mb-4">Archive Snapshot</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard label="Completed Games" value={globalStats.completedGames} />
+          <StatCard label="Models" value={globalStats.totalModelsPlayed} />
+          <StatCard label="Avg Turns" value={globalStats.avgGameLength} />
+          <StatCard
+            label="Top Model"
+            value={globalStats.mostWinningModel?.modelDisplayName ?? '—'}
           />
         </div>
       </section>
 
-      {/* Features */}
-      <section className="max-w-6xl mx-auto w-full">
-        <h2 className="text-2xl font-bold text-white text-center mb-8">
-          Features
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <FeatureCard
-            title="Real-time Gameplay"
-            description="Real-time gameplay is paused; previous games remain available for analysis."
-            icon="⚡"
-          />
-          <FeatureCard
-            title="Multiple AI Models"
-            description="Pit Claude against GPT, Gemini against Llama, and more in head-to-head matches."
-            icon="🤖"
-          />
-          <FeatureCard
-            title="Strategy Analytics"
-            description="Track aggression levels, trading patterns, and property preferences."
-            icon="📈"
-          />
-          <FeatureCard
-            title="Game Replays"
-            description="Review any game turn-by-turn with full decision context."
-            icon="🔄"
-          />
-          <FeatureCard
-            title="Head-to-Head Stats"
-            description="See which models dominate others in direct matchups."
-            icon="⚔️"
-          />
-          <FeatureCard
-            title="Leaderboard"
-            description="Track overall win rates and model rankings across all games."
-            icon="🏆"
-          />
+      <section className="max-w-5xl mx-auto w-full">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold text-white">Recent Completed Games</h2>
+          <Link to="/games" className="text-green-400 hover:text-green-300 text-sm">
+            View all
+          </Link>
+        </div>
+        <div className="divide-y divide-slate-700 border border-slate-700 rounded-lg overflow-hidden">
+          {recentGames.map((game) => (
+            <Link
+              key={game.id}
+              to="/games/$gameId"
+              params={{ gameId: game.id }}
+              className="flex items-center justify-between gap-4 p-4 bg-slate-800/50 hover:bg-slate-800 transition-colors"
+            >
+              <div>
+                <div className="text-white font-medium">
+                  {game.winner?.modelDisplayName ?? 'Unknown winner'}
+                </div>
+                <div className="text-slate-400 text-sm">
+                  {game.players.map((p) => p.modelDisplayName).join(' · ')}
+                </div>
+              </div>
+              <div className="text-slate-400 text-sm">
+                {game.currentTurnNumber} turns
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
     </div>
   )
 }
-
-// ============================================================
-// HELPER COMPONENTS
-// ============================================================
 
 function StatCard({
   label,
   value,
-  icon,
 }: {
   label: string
-  value: string
-  icon: string
+  value: string | number
 }) {
   return (
-    <div className="bg-slate-800 rounded-lg p-4 text-center">
-      <div className="text-2xl mb-1">{icon}</div>
-      <div className="text-2xl font-bold text-white">{value}</div>
-      <div className="text-sm text-slate-400">{label}</div>
-    </div>
-  )
-}
-
-function GameLink({
-  game,
-}: {
-  game: { _id: string; status: string; currentTurnNumber: number }
-}) {
-  const content = (
-    <>
-      <div>
-        <span className="text-white font-medium">
-          Game #{game._id.slice(-6)}
-        </span>
-        <span className="text-slate-400 text-sm ml-2">
-          Turn {game.currentTurnNumber}
-        </span>
-      </div>
-      <GameStatusBadge status={game.status} />
-    </>
-  )
-
-  if (game.status === 'in_progress') {
-    return (
-      <Link
-        to="/play/$gameId"
-        params={{ gameId: game._id }}
-        className="bg-slate-700 hover:bg-slate-600 p-4 rounded-lg flex justify-between items-center transition-colors"
-      >
-        {content}
-      </Link>
-    )
-  }
-
-  return (
-    <Link
-      to="/games/$gameId"
-      params={{ gameId: game._id }}
-      className="bg-slate-700 hover:bg-slate-600 p-4 rounded-lg flex justify-between items-center transition-colors"
-    >
-      {content}
-    </Link>
-  )
-}
-
-function GameStatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    setup: 'bg-yellow-600',
-    in_progress: 'bg-green-600',
-    completed: 'bg-blue-600',
-    abandoned: 'bg-red-600',
-  }
-
-  return (
-    <span
-      className={`px-2 py-1 rounded text-xs font-medium text-white ${styles[status] || 'bg-slate-600'}`}
-    >
-      {status.replace('_', ' ')}
-    </span>
-  )
-}
-
-function StepCard({
-  number,
-  title,
-  description,
-}: {
-  number: number
-  title: string
-  description: string
-}) {
-  return (
-    <div className="flex gap-3">
-      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
-        {number}
-      </div>
-      <div>
-        <h3 className="font-medium text-white">{title}</h3>
-        <p className="text-sm text-slate-400">{description}</p>
-      </div>
-    </div>
-  )
-}
-
-function QuickLinkCard({
-  to,
-  title,
-  description,
-  icon,
-  color,
-}: {
-  to: '/play' | '/analytics' | '/games'
-  title: string
-  description: string
-  icon: string
-  color: 'green' | 'blue' | 'purple'
-}) {
-  const colorStyles = {
-    green: 'bg-green-600 hover:bg-green-700',
-    blue: 'bg-blue-600 hover:bg-blue-700',
-    purple: 'bg-purple-600 hover:bg-purple-700',
-  }
-
-  return (
-    <Link
-      to={to}
-      className={`${colorStyles[color]} rounded-lg p-6 text-center transition-colors`}
-    >
-      <div className="text-3xl mb-2">{icon}</div>
-      <h3 className="font-bold text-white text-lg">{title}</h3>
-      <p className="text-sm text-white/80">{description}</p>
-    </Link>
-  )
-}
-
-function FeatureCard({
-  title,
-  description,
-  icon,
-}: {
-  title: string
-  description: string
-  icon: string
-}) {
-  return (
-    <div className="bg-slate-800 rounded-lg p-5">
-      <div className="text-2xl mb-2">{icon}</div>
-      <h3 className="font-bold text-white mb-1">{title}</h3>
-      <p className="text-sm text-slate-400">{description}</p>
+    <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4">
+      <div className="text-slate-400 text-sm mb-1">{label}</div>
+      <div className="text-white text-xl font-bold truncate">{value}</div>
     </div>
   )
 }

@@ -3,8 +3,8 @@ import { Card, CardBody } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { GROUP_COLORS } from './Board'
-import type { Id } from '../../../convex/_generated/dataModel'
-import type { PropertyGroup } from '../../../convex/lib/constants'
+import type { Id } from '../../lib/game/id'
+import type { PropertyGroup } from '../../lib/game/constants'
 
 // ============================================================
 // TYPES

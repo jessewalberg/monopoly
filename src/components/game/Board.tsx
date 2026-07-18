@@ -1,7 +1,7 @@
-import { BOARD  } from '../../../convex/lib/constants'
+import { BOARD  } from '../../lib/game/constants'
 import { BoardSpaceComponent } from './BoardSpace'
-import type {PropertyGroup} from '../../../convex/lib/constants';
-import type { Id } from '../../../convex/_generated/dataModel'
+import type {PropertyGroup} from '../../lib/game/constants';
+import type { Id } from '../../lib/game/id'
 
 // ============================================================
 // TYPES

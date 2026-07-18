@@ -1,49 +1,40 @@
 {
-  "name": "-t",
+  "name": "llm-monopoly-arena-museum",
   "private": true,
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "env:pull": "bash ./scripts/fetch-1password-env.sh",
-    "dev:local": "pnpm run env:pull && pnpm run dev",
-    "dev": "npx convex dev --once && concurrently -r npm:dev:web npm:dev:convex",
-    "dev:web": "vite dev",
+    "dev": "vite dev",
     "dev:ts": "tsc -b -w",
-    "dev:convex": "npx convex dev",
-    "build": "npx convex codegen && vite build && tsc --noEmit",
+    "build": "vite build && tsc --noEmit && node --experimental-strip-types scripts/museum/guardBuildArtifacts.ts",
+    "museum:guard-artifacts": "node --experimental-strip-types scripts/museum/guardBuildArtifacts.ts",
     "deploy": "pnpm run build && wrangler deploy",
     "preview": "pnpm run build && vite preview",
     "cf-typegen": "wrangler types",
-    "start": "node .output/server/index.mjs",
+    "museum:generate": "node --experimental-strip-types scripts/museum/cli.ts",
     "format": "prettier --write .",
-    "lint": "tsc && eslint .  --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "tsc --noEmit && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.21.0",
-    "@convex-dev/react-query": "^0.0.0-alpha.11",
     "@tanstack/react-query": "^5.89.0",
     "@tanstack/react-router": "^1.132.2",
     "@tanstack/react-router-with-query": "^1.130.17",
     "@tanstack/react-start": "^1.132.2",
-    "convex": "^1.31.0",
-    "nanoid": "^5.1.6",
-    "openai": "^6.16.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "recharts": "^3.6.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {
-    "@convex-dev/eslint-plugin": "^1.1.1",
     "@tailwindcss/vite": "^4.1.13",
     "@tanstack/eslint-config": "^0.3.2",
     "@types/node": "^25.0.8",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
-    "concurrently": "~9.2.1",
     "eslint": "^9.39.2",
     "prettier": "^3.6.2",
     "tailwindcss": "^4.1.13",
@@ -55,8 +46,11 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@tailwindcss/oxide",
       "esbuild",
-      "@tailwindcss/oxide"
+      "sharp",
+      "unrs-resolver",
+      "workerd"
     ]
   }
 }

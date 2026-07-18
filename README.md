@@ -1,347 +1,87 @@
-# LLM Monopoly Arena
+# LLM Monopoly Arena (Static Museum)
 
-Watch AI models battle for Boardwalk! An automated arena where Claude, GPT, Gemini, and Grok compete in the classic board game of Monopoly.
+A Cloudflare-hosted **static museum** of completed AI Monopoly games and analytics. Live arena play (Convex + OpenRouter) has been retired.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
-![React](https://img.shields.io/badge/React-19-blue)
-![Convex](https://img.shields.io/badge/Convex-1.0-orange)
+## What remains
 
-## Overview
+- `/` — museum landing
+- `/games` — completed game history
+- `/games/:gameId` — turn-by-turn replay from static JSON
+- `/analytics` (+ leaderboard / head-to-head / model detail) — offline aggregates
+- `/play` — explicit retired/read-only status (not a live control surface)
 
-LLM Monopoly Arena is a full-stack web application that pits different AI language models against each other in games of Monopoly. The platform runs automated daily games using budget-tier models, tracks comprehensive analytics, and provides real-time game viewing.
+Archive contents are generated from a Convex document snapshot and checked into `public/museum/`:
 
-### Key Features
+- 224 completed games retained
+- abandoned games excluded
+- `decisions`, `trades`, and `rentPayments` omitted from deployed payloads
 
-- **Automated Arena Mode** - Daily games run automatically at 12:00 UTC with 5 budget-tier models
-- **Real-time Game Viewing** - Watch games as they happen with live board updates
-- **LLM Decision Transparency** - See the reasoning behind every AI decision
-- **Comprehensive Analytics** - Track win rates, head-to-head records, and strategy profiles
-- **Game Replays** - Review any past game turn-by-turn
-- **Full Monopoly Rules** - Property trading, building, mortgaging, and more
+See [docs/adr/0001-static-museum-sunset.md](./docs/adr/0001-static-museum-sunset.md).
 
-## Tech Stack
+## Tech stack
 
-| Layer           | Technology                                                      |
-| --------------- | --------------------------------------------------------------- |
-| Frontend        | React 19, TanStack Start (SSR), TanStack Router, TanStack Query |
-| Backend         | Convex (serverless functions, real-time database, scheduling)   |
-| LLM Gateway     | OpenRouter (unified API for multiple providers)                 |
-| Styling         | Tailwind CSS v4                                                 |
-| Charts          | Recharts                                                        |
-| Package Manager | pnpm                                                            |
+| Layer           | Technology                                      |
+| --------------- | ----------------------------------------------- |
+| Frontend        | React 19, TanStack Start/Router/Query           |
+| Data            | Static JSON under `public/museum/`              |
+| Styling         | Tailwind CSS v4                                 |
+| Charts          | Recharts                                        |
+| Hosting         | Cloudflare (Worker shell serves static museum)  |
+| Package Manager | pnpm                                            |
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Frontend                              │
-│  React + TanStack Start (SSR)                               │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────────────┐│
-│  │  Home   │ │  Arena  │ │ History │ │     Analytics       ││
-│  │  Page   │ │  Mode   │ │ & Replay│ │ Leaderboard, H2H    ││
-│  └────┬────┘ └────┬────┘ └────┬────┘ └──────────┬──────────┘│
-└───────┼──────────┼──────────┼───────────────────┼───────────┘
-        │          │          │                   │
-        ▼          ▼          ▼                   ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Convex Backend                            │
-│  ┌─────────────┐  ┌──────────────────┐  ┌─────────────────┐ │
-│  │   Queries   │  │    Mutations     │  │    Actions      │ │
-│  │ games, etc. │  │  gameEngine.ts   │  │ llmDecisions.ts │ │
-│  └──────┬──────┘  └────────┬─────────┘  └────────┬────────┘ │
-│         │                  │                     │          │
-│         ▼                  ▼                     ▼          │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │                  Convex Database                        ││
-│  │  games | players | properties | turns | decisions | ... ││
-│  └─────────────────────────────────────────────────────────┘│
-│         ▲                                                   │
-│  ┌──────┴──────┐                                            │
-│  │   Cron Job  │ ──────────────────────────────────────────►│
-│  │ daily game  │                                            │
-│  └─────────────┘                                            │
-└─────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-                    ┌─────────────────────┐
-                    │    OpenRouter API   │
-                    │  Claude, GPT, etc.  │
-                    └─────────────────────┘
-```
-
-For detailed architecture diagrams (Mermaid), see [ARCHITECTURE.md](./ARCHITECTURE.md).
-
-## Budget Models
-
-The arena uses these cost-efficient models:
-
-| Model                 | Provider  | ID                             |
-| --------------------- | --------- | ------------------------------ |
-| GPT-4o Mini           | OpenAI    | `openai/gpt-4o-mini`           |
-| Gemini 2.0 Flash      | Google    | `google/gemini-2.0-flash-001`  |
-| Gemini 2.5 Flash Lite | Google    | `google/gemini-2.5-flash-lite` |
-| Claude 3.5 Haiku      | Anthropic | `anthropic/claude-3.5-haiku`   |
-| Grok 3 Mini           | xAI       | `x-ai/grok-3-mini`             |
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- pnpm (`npm install -g pnpm`)
-- [Convex account](https://convex.dev) (free tier works)
-- [OpenRouter API key](https://openrouter.ai)
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/yourusername/monopoly-llm.git
-   cd monopoly-llm
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   pnpm install
-   ```
-
-3. **Set up Convex**
-
-   ```bash
-   npx convex dev
-   ```
-
-   This will prompt you to log in and create a new project.
-
-4. **Configure environment variables**
-
-   Set your OpenRouter API key in Convex:
-
-   ```bash
-   npx convex env set OPENROUTER_API_KEY your_key_here
-   ```
-
-5. **Start development server**
-
-   ```bash
-   pnpm run dev
-   ```
-
-   The app will be available at `http://localhost:3000`
-
-### Project Structure
-
-```
-monopoly-llm/
-├── convex/                 # Backend (Convex)
-│   ├── schema.ts          # Database schema
-│   ├── games.ts           # Game queries & mutations
-│   ├── players.ts         # Player queries & mutations
-│   ├── properties.ts      # Property queries & mutations
-│   ├── turns.ts           # Turn queries & mutations
-│   ├── decisions.ts       # Decision queries & mutations
-│   ├── gameEngine.ts      # Core game loop
-│   ├── llmDecisions.ts    # LLM API calls
-│   ├── llmDecisionExecutors.ts  # Execute LLM choices
-│   ├── analytics.ts       # Analytics queries
-│   ├── statsAggregator.ts # Update stats after games
-│   ├── crons.ts           # Daily game scheduler
-│   ├── arenaScheduler.ts  # Arena game creation
-│   └── lib/               # Pure game logic
-│       ├── board.ts       # Board spaces & positions
-│       ├── rent.ts        # Rent calculations
-│       ├── cards.ts       # Chance/CC cards
-│       ├── validation.ts  # Action validation
-│       ├── bankruptcy.ts  # Bankruptcy handling
-│       ├── prompts.ts     # LLM prompt building
-│       └── constants.ts   # Game constants
-│
-├── src/                    # Frontend (React)
-│   ├── routes/            # TanStack Router pages
-│   │   ├── __root.tsx     # Root layout
-│   │   ├── index.tsx      # Home page
-│   │   ├── play/          # Arena & live games
-│   │   ├── games/         # History & replays
-│   │   └── analytics/     # Stats & leaderboard
-│   ├── components/        # React components
-│   │   ├── game/          # Board, players, controls
-│   │   ├── analytics/     # Charts & tables
-│   │   └── ui/            # Buttons, cards, modals
-│   └── lib/               # Frontend utilities
-│       └── models.ts      # Model definitions
-│
-├── package.json
-├── convex.json
-├── vite.config.ts
-└── tailwind.config.js
-```
-
-## Game Flow
-
-### Arena Mode
-
-1. **Daily Cron** - Every day at 12:00 UTC, Convex runs `arenaScheduler.startScheduledGame`
-2. **Game Creation** - All 5 budget models are shuffled and assigned to the game
-3. **Turn Processing** - `gameEngine.processTurnStep` handles each phase:
-   - **Pre-Roll**: LLM decides on building/trading/mortgaging
-   - **Rolling**: Dice rolled, player moves
-   - **Post-Roll**: Handle landing (rent, purchase, cards)
-   - **Turn End**: Advance to next player
-4. **LLM Decisions** - When a decision is needed:
-   - Game pauses with `waitingForLLM=true`
-   - `llmDecisions.getLLMDecision` builds prompts and calls OpenRouter
-   - Response is parsed and executed via `llmDecisionExecutors`
-   - Game resumes
-5. **Game End** - When one player remains, stats are aggregated
-
-### Decision Types
-
-| Type                | When                     | Options                      |
-| ------------------- | ------------------------ | ---------------------------- |
-| `buy_property`      | Land on unowned property | Buy, Auction                 |
-| `auction_bid`       | Property goes to auction | Bid amount                   |
-| `jail_strategy`     | Start turn in jail       | Pay, Roll, Use card          |
-| `pre_roll_actions`  | Before rolling           | Build, Mortgage, Trade, Done |
-| `post_roll_actions` | After landing            | Build, Mortgage, Done        |
-| `trade_response`    | Receive trade offer      | Accept, Reject, Counter      |
-
-## API Security
-
-All game-modifying mutations are `internalMutation`, meaning:
-
-- They can only be called by other Convex functions
-- The frontend cannot directly create or modify games
-- Games are created only by the daily cron job
-
-Queries are public for real-time subscriptions.
-
-## Analytics
-
-The platform tracks:
-
-- **Model Stats**: Wins, win rate, avg net worth, games played
-- **Head-to-Head**: Win/loss records between each model pair
-- **Property Stats**: Purchase rates, rent collected, owner win rate
-- **Strategy Profiles**: Aggression, property preferences, trading patterns
-- **Decision Logs**: Every LLM decision with reasoning
-
-## Available Scripts
-
-| Command                | Description                          |
-| ---------------------- | ------------------------------------ |
-| `pnpm run env:pull`    | Fetch `.env.local` from 1Password    |
-| `pnpm run dev:local`   | Pull secrets, then start local dev   |
-| `pnpm run dev`         | Start development server with Convex |
-| `pnpm run build`       | Build for production                 |
-| `pnpm run test`        | Run unit tests                       |
-| `pnpm run test:watch`  | Run tests in watch mode              |
-| `npx convex dev`       | Start Convex dev mode only           |
-| `npx convex deploy`    | Deploy Convex to production          |
-| `npx convex dashboard` | Open Convex dashboard                |
-
-### Local Secrets via 1Password
-
-This repo can pull local env vars from 1Password using:
+## Local development
 
 ```bash
-pnpm run env:pull
+pnpm install
+pnpm run dev
 ```
 
-Default source:
+No Convex deployment URL or OpenRouter API key is required for local museum browsing.
 
-`op://Private/64vemiaz6crtuooztbqfv6gd34/.env.local`
+### Regenerate museum assets
 
-Then start dev with secrets pre-fetched:
+Provide a Convex snapshot zip (export of documents) via env or CLI args. Do not commit private absolute paths into scripts.
 
 ```bash
-pnpm run dev:local
+# Example:
+MUSEUM_SNAPSHOT_PATH=/path/to/snapshot.zip \
+  pnpm museum:generate "$MUSEUM_SNAPSHOT_PATH" public/museum
 ```
 
-### Environment Variables
+Generation validates referential integrity and fails closed on malformed/missing required data.
 
-| Variable             | Where            | Description                            |
-| -------------------- | ---------------- | -------------------------------------- |
-| `OPENROUTER_API_KEY` | Convex Dashboard | API key for OpenRouter                 |
-| `CONVEX_URL`         | Cloudflare Pages | Convex deployment URL (from dashboard) |
-
-## Monopoly Rules Implementation
-
-### Properties
-
-- 28 purchasable properties (22 streets, 4 railroads, 2 utilities)
-- 8 color groups for streets
-- Monopoly = owning all properties in a group
-
-### Rent
-
-- **Streets**: Base rent, 2x with monopoly, multipliers with houses (3x, 6x, 12x, 16x, 25x for hotel)
-- **Railroads**: $25 × 2^(owned-1) ($25, $50, $100, $200)
-- **Utilities**: 4x dice (one owned) or 10x dice (both owned)
-- **Mortgaged**: No rent collected
-
-### Building
-
-- Can only build on complete monopolies
-- Must build evenly (max 1 house difference)
-- Houses: 1-4, then upgrade to hotel
-
-### Jail
-
-- Go To Jail space or 3 consecutive doubles
-- Exit by: paying $50, rolling doubles, or using card
-- Maximum 3 turns, then must pay
-
-### Bankruptcy
-
-- Can't pay debt: liquidate assets
-- Remaining assets go to creditor (or bank)
-- Last player standing wins
-
-## Keyboard Shortcuts
-
-| Key     | Action              |
-| ------- | ------------------- |
-| `Space` | Pause/Resume game   |
-| `+`     | Speed up game       |
-| `-`     | Slow down game      |
-| `L`     | Toggle game log     |
-| `?`     | Show shortcuts help |
-
-## Testing
-
-Run the test suite:
+## Scripts
 
 ```bash
-pnpm run test
+pnpm run dev          # Vite dev server
+pnpm run build        # Production build + typecheck
+pnpm run test         # Vitest
+pnpm run lint         # tsc + eslint
+pnpm museum:generate  # Snapshot → public/museum
+pnpm run deploy       # build + wrangler deploy (reviewer-owned)
 ```
 
-Tests cover:
+## Retired architecture
 
-- Rent calculation (properties, railroads, utilities)
-- Monopoly detection
-- Even building rule validation
-- Mortgage/unmortgage validation
-- Jail mechanics
-- Trade validation
+Historically this app used:
 
-## Contributing
+- **Convex** for realtime game state, scheduling, and analytics aggregation
+- **OpenRouter** for LLM turn decisions
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Those runtime integrations are removed from the application code. Historical docs (`ARCHITECTURE.md`, older notes) may still describe the retired system.
 
-## License
+## Sunset completion (2026-07-18)
 
-MIT License - see [LICENSE](LICENSE) file for details.
+1. Static museum deployed and smoke-verified at https://monopoly-llm.jessewalberg.com
+2. monopoly-llm Convex project and both deployments deleted (irreversible)
+3. Retired OpenRouter key revoked; GitHub production `CONVEX_DEPLOY_KEY` removed; production and development monopoly-app 1Password items archived (each held only the retired `OPENROUTER_API_KEY`)
+4. Durable offline backups (verified SHA-256):
 
-## Acknowledgments
+| Deployment | SHA-256 |
+| ---------- | ------- |
+| prod | `00a4626aae16d60699d046131b186ac7c38217c5372addfbb4000b643523b16e` |
+| dev | `ea11d496fcfcefb537f7462d8b3d1e63716d5082e227b536b3745ef497fd9678` |
 
-- [Convex](https://convex.dev) for the real-time backend
-- [OpenRouter](https://openrouter.ai) for unified LLM access
-- [TanStack](https://tanstack.com) for React tooling
-- Monopoly is a trademark of Hasbro
+Backup directory: `/Volumes/home-ext/portfolio-sunset-2026-06-02/monopoly-convex-backups/2026-07-18`
+
+Project deletion is irreversible; offline data remains recoverable from these verified backups.

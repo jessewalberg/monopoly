@@ -1,87 +1,41 @@
 import { useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { convexQuery } from '@convex-dev/react-query'
-import { api } from '../../../convex/_generated/api'
+import { getGameReplay } from '../../lib/museum/data'
+import { reconstructPlayersAtTurn } from '../../lib/museum/replayState'
 import { Board } from '../../components/game/Board'
 import { Card, CardBody, CardHeader } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-import type { Id } from '../../../convex/_generated/dataModel'
-
-// ============================================================
-// ROUTE DEFINITION
-// ============================================================
+import type { Id } from '../../lib/game/id'
 
 export const Route = createFileRoute('/games/$gameId')({
   component: GameReplayPage,
 })
 
-// ============================================================
-// GAME REPLAY PAGE
-// ============================================================
-
 function GameReplayPage() {
   const { gameId } = Route.useParams()
-  const typedGameId = gameId as Id<'games'>
-
-  // Selected turn for replay
   const [selectedTurn, setSelectedTurn] = useState<number>(1)
 
-  // Get game state
-  const { data: gameState } = useSuspenseQuery(
-    convexQuery(api.games.getFullState, { gameId: typedGameId }),
-  )
+  const { data: replay } = useSuspenseQuery({
+    queryKey: ['museum', 'game', gameId],
+    queryFn: () => getGameReplay(gameId),
+  })
 
-  // Get all turns
-  const { data: allTurns } = useSuspenseQuery(
-    convexQuery(api.turns.getByGame, { gameId: typedGameId }),
-  )
-
-  // Get property transfer history
-  const { data: propertyTransfers } = useSuspenseQuery(
-    convexQuery(api.propertyTransfers.getByGame, { gameId: typedGameId }),
-  )
-
-  // Get property state history (houses/mortgage)
-  const { data: propertyStateEvents } = useSuspenseQuery(
-    convexQuery(api.propertyStateEvents.getByGame, { gameId: typedGameId }),
-  )
-
-  if (!gameState) {
-    return (
-      <div className="p-8 text-center">
-        <h1 className="text-2xl font-bold text-white mb-4">Game Not Found</h1>
-        <Link to="/games" className="text-green-400 hover:text-green-300">
-          Back to History
-        </Link>
-      </div>
-    )
-  }
-
-  const { game, players, properties } = gameState
+  const { game, players, properties, turns, propertyTransfers, propertyStateEvents } =
+    replay
   const winner = players.find((p) => p._id === game.winnerId)
 
-  // Sort turns by turn number
-  const sortedTurns = [...allTurns].sort((a, b) => a.turnNumber - b.turnNumber)
+  const sortedTurns = [...turns].sort((a, b) => a.turnNumber - b.turnNumber)
   const maxTurn =
     sortedTurns.length > 0 ? sortedTurns[sortedTurns.length - 1].turnNumber : 1
   const currentTurnData = sortedTurns.find((t) => t.turnNumber === selectedTurn)
 
-  // Transform for board at selected turn
-  // Note: For a full replay, we'd need to reconstruct board state at each turn
-  // For now, we show the final state but highlight the selected turn info
-  const boardPlayers = players.map((p) => ({
-    _id: p._id,
-    position:
-      currentTurnData?.playerId === p._id
-        ? (currentTurnData.positionAfter ?? currentTurnData.positionBefore)
-        : p.position,
-    modelDisplayName: p.modelDisplayName,
-    tokenColor: p.tokenColor,
-    textColor: '#FFFFFF',
-    inJail: p.inJail,
-  }))
+  const boardPlayers = reconstructPlayersAtTurn(
+    players,
+    sortedTurns,
+    selectedTurn,
+  )
 
   const transfersUpToTurn = propertyTransfers
     .filter((t: { turnNumber: number }) => t.turnNumber <= selectedTurn)

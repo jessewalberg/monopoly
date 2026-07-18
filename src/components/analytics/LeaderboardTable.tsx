@@ -6,7 +6,7 @@ import { Link } from '@tanstack/react-router'
 // ============================================================
 
 export interface LeaderboardEntry {
-  _id: string
+  _id?: string
   modelId: string
   modelDisplayName: string
   modelProvider: string
@@ -119,7 +119,7 @@ export function LeaderboardTable({
         <tbody>
           {sortedData.map((entry, index) => (
             <LeaderboardRow
-              key={entry._id}
+              key={entry._id ?? entry.modelId}
               entry={entry}
               rank={index + 1}
               showRank={showRank}
@@ -270,7 +270,7 @@ export function CompactLeaderboard({
     <div className="space-y-2">
       {topEntries.map((entry, index) => (
         <div
-          key={entry._id}
+          key={entry._id ?? entry.modelId}
           className="flex items-center justify-between p-2 bg-slate-700/30 rounded-lg"
         >
           <div className="flex items-center gap-3">

@@ -1,44 +1,31 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { convexQuery } from '@convex-dev/react-query'
-import { api } from '../../../convex/_generated/api'
+import { getAnalytics, getLeaderboard } from '../../lib/museum/data'
 import { Card, CardBody, CardHeader } from '../../components/ui/Card'
-import { Badge } from '../../components/ui/Badge'
 import { LeaderboardTable } from '../../components/analytics'
-import type { FunctionArgs } from 'convex/server'
-
-// ============================================================
-// ROUTE DEFINITION
-// ============================================================
 
 export const Route = createFileRoute('/analytics/leaderboard')({
   component: LeaderboardPage,
 })
-
-// ============================================================
-// LEADERBOARD PAGE
-// ============================================================
 
 function LeaderboardPage() {
   const [sortBy, setSortBy] = useState<
     'wins' | 'winRate' | 'gamesPlayed' | 'avgNetWorth'
   >('wins')
 
-  const leaderboardArgs = {
-    sortBy,
-  } satisfies FunctionArgs<typeof api.analytics.getLeaderboard>
-  const { data: leaderboard } = useSuspenseQuery(
-    convexQuery(api.analytics.getLeaderboard, leaderboardArgs),
-  )
-
-  const { data: globalStats } = useSuspenseQuery(
-    convexQuery(api.analytics.getGlobalStats, {}),
-  )
+  const { data: leaderboard } = useSuspenseQuery({
+    queryKey: ['museum', 'leaderboard', sortBy],
+    queryFn: () => getLeaderboard({ sortBy }),
+  })
+  const { data: analytics } = useSuspenseQuery({
+    queryKey: ['museum', 'analytics'],
+    queryFn: getAnalytics,
+  })
+  const globalStats = analytics.global
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto">
-      {/* Header */}
       <div className="mb-8">
         <Link
           to="/analytics"
@@ -47,10 +34,9 @@ function LeaderboardPage() {
           ← Back to Analytics
         </Link>
         <h1 className="text-3xl font-bold text-white mb-2">Leaderboard</h1>
-        <p className="text-slate-400">AI model rankings by win rate</p>
+        <p className="text-slate-400">AI model rankings from completed games</p>
       </div>
 
-      {/* Stats Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div className="bg-slate-800 rounded-lg p-4 text-center">
           <div className="text-2xl font-bold text-white">
@@ -80,48 +66,34 @@ function LeaderboardPage() {
         </div>
       </div>
 
-      {/* Leaderboard Table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-bold text-white">Rankings</h2>
-            <Badge variant="info" size="sm">
-              Sorted by {sortBy}
-            </Badge>
+            <select
+              value={sortBy}
+              onChange={(e) =>
+                setSortBy(
+                  e.target.value as
+                    | 'wins'
+                    | 'winRate'
+                    | 'gamesPlayed'
+                    | 'avgNetWorth',
+                )
+              }
+              className="bg-slate-700 text-white text-sm rounded px-3 py-2"
+            >
+              <option value="wins">Wins</option>
+              <option value="winRate">Win Rate</option>
+              <option value="gamesPlayed">Games Played</option>
+              <option value="avgNetWorth">Avg Net Worth</option>
+            </select>
           </div>
         </CardHeader>
-        <CardBody className="p-0">
-          {leaderboard.length === 0 ? (
-            <div className="p-8 text-center text-slate-400">
-              <div className="text-4xl mb-4">🏆</div>
-              <p>No games completed yet!</p>
-              <p className="text-sm mt-2">
-                Play some games to see the leaderboard
-              </p>
-              <Link
-                to="/play"
-                className="inline-block mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                Start a Game
-              </Link>
-            </div>
-          ) : (
-            <LeaderboardTable
-              data={leaderboard}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-            />
-          )}
+        <CardBody>
+          <LeaderboardTable data={leaderboard} sortBy={sortBy} />
         </CardBody>
       </Card>
-
-      {/* Info */}
-      <div className="mt-6 text-sm text-slate-400 text-center">
-        <p>
-          Sort by wins, win rate, games played, or average net worth to explore
-          different rankings.
-        </p>
-      </div>
     </div>
   )
 }
