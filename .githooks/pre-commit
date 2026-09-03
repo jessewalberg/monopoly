@@ -15,11 +15,13 @@ for f in $staged; do
     *.example|*.sample|*.md|*secrets.manifest.json) continue ;;
   esac
 
-  # 1. Real .env files should never be tracked at all.
+  # 1. Local/secret env files must never be tracked. Tracked .env.<mode> files
+  #    are allowed (they hold public Vite build vars) but still get scanned
+  #    by rules 2 and 3 below.
   case "$f" in
-    .env|.env.*|*/.env|*/.env.*)
-      echo "BLOCKED: $f is an env file and must not be committed."
-      echo "  Use $f.example with placeholder values instead."
+    .env|.env.local|.env.*.local|*/.env|*/.env.local|*/.env.*.local)
+      echo "BLOCKED: $f holds real secrets and must not be committed."
+      echo "  Keep it untracked; put the value in Proton Pass."
       fail=1
       continue
       ;;
