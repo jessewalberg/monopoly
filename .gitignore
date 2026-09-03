@@ -29,3 +29,7 @@ convex/_generated
 /playwright/.cache/
 
 app.config.timestamp_*.js
+
+# secrets: never track real env files (P-2-2026-09-04)
+.env.local
+.env.*.local
