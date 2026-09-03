@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { convexQuery, useConvexMutation } from '@convex-dev/react-query'
+import { useMemo } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { convexQuery } from '@convex-dev/react-query'
 import { api } from '../../../convex/_generated/api'
 import { Card, CardBody, CardHeader } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
@@ -30,15 +30,6 @@ export const Route = createFileRoute('/analytics/')({
 // ============================================================
 
 function AnalyticsDashboardPage() {
-  const [rebuildResult, setRebuildResult] = useState<{
-    gamesProcessed: number
-  } | null>(null)
-  const [adminUnlocked, setAdminUnlocked] = useState(false)
-  const [unlockError, setUnlockError] = useState<string | null>(null)
-  const adminPassphrase = import.meta.env.VITE_ADMIN_PASSPHRASE as
-    | string
-    | undefined
-
   const { data: globalStats } = useSuspenseQuery(
     convexQuery(api.analytics.getGlobalStats, {}),
   )
@@ -57,17 +48,6 @@ function AnalyticsDashboardPage() {
   const { data: recentGames } = useSuspenseQuery(
     convexQuery(api.analytics.getRecentGames, { limit: 5 }),
   )
-
-  const rebuildStats = useMutation<
-    { gamesProcessed: number; success: boolean },
-    Error,
-    {}
-  >({
-    mutationFn: useConvexMutation(api.statsAggregator.recalculateAllStats),
-    onSuccess: (result) => {
-      setRebuildResult(result)
-    },
-  })
 
   const topModelIds = useMemo(
     () => leaderboard.slice(0, 4).map((model) => model.modelId),
@@ -97,42 +77,6 @@ function AnalyticsDashboardPage() {
   const rentCollector = getTopModel(leaderboard, 'totalRentCollected')
   const fastestThinker = getTopModel(leaderboard, 'avgDecisionTimeMs', 'asc')
   const propertyHoarder = getTopModel(leaderboard, 'avgPropertiesOwned')
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const unlocked = window.localStorage.getItem('analyticsAdminUnlocked')
-    if (unlocked === 'true') {
-      setAdminUnlocked(true)
-    }
-  }, [])
-
-  const handleUnlockAdmin = () => {
-    setUnlockError(null)
-    if (!adminPassphrase) {
-      setUnlockError('Admin passphrase is not configured.')
-      return
-    }
-
-    const entered = window.prompt('Enter admin passphrase')
-    if (!entered) return
-    if (entered !== adminPassphrase) {
-      setUnlockError('Incorrect passphrase.')
-      return
-    }
-
-    window.localStorage.setItem('analyticsAdminUnlocked', 'true')
-    setAdminUnlocked(true)
-  }
-
-  const handleRebuildStats = () => {
-    if (
-      window.confirm(
-        'Rebuild all analytics stats now? This may take a little while.',
-      )
-    ) {
-      rebuildStats.mutate({})
-    }
-  }
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto">
@@ -381,29 +325,7 @@ function AnalyticsDashboardPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">Global Summary</h2>
-              {adminUnlocked ? (
-                <button
-                  type="button"
-                  onClick={handleRebuildStats}
-                  className="text-xs bg-slate-700 text-white px-3 py-1 rounded-md hover:bg-slate-600 transition-colors"
-                  disabled={rebuildStats.isPending}
-                >
-                  {rebuildStats.isPending
-                    ? 'Rebuilding...'
-                    : 'Rebuild Analytics'}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleUnlockAdmin}
-                  className="text-xs bg-slate-700 text-white px-3 py-1 rounded-md hover:bg-slate-600 transition-colors"
-                >
-                  Unlock Admin
-                </button>
-              )}
-            </div>
+            <h2 className="text-lg font-bold text-white">Global Summary</h2>
           </CardHeader>
           <CardBody>
             <div className="grid grid-cols-2 gap-4 text-sm text-slate-300">
@@ -429,14 +351,6 @@ function AnalyticsDashboardPage() {
                 value={globalStats.inProgressGames}
               />
             </div>
-            {unlockError && (
-              <div className="mt-3 text-xs text-red-300">{unlockError}</div>
-            )}
-            {rebuildResult && (
-              <div className="mt-4 text-xs text-slate-400">
-                Rebuilt analytics for {rebuildResult.gamesProcessed} games.
-              </div>
-            )}
           </CardBody>
         </Card>
       </div>

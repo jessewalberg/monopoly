@@ -29,3 +29,8 @@ convex/_generated
 /playwright/.cache/
 
 app.config.timestamp_*.js
+
+# local env files (secrets live in Proton Pass; never commit these)
+.env.dev
+.env.production
+.env.1password

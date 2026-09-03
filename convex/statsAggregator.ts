@@ -569,8 +569,14 @@ async function updatePropertyStats(
 /**
  * Wipe and rebuild all stats from scratch.
  * Use this for corrections or after schema changes.
+ *
+ * Internal-only: not callable from clients. Run it from the Convex dashboard
+ * ("Run function") or the CLI:
+ *   npx convex run statsAggregator:recalculateAllStats
+ * Normal stats upkeep happens automatically via the internal track*/update*
+ * mutations on game events; this is a maintenance backfill.
  */
-export const recalculateAllStats = mutation({
+export const recalculateAllStats = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Clear existing stats
